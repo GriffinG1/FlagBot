@@ -67,7 +67,7 @@ class Info:
             embed = discord.Embed(description=desc.format(desc_servepkx))
         elif app.lower() == "qraken":
             embed = discord.Embed(description=desc.format(desc_qraken))
-        elif app.lower() == "jedecheck" or app.lower() == "jede":
+        elif app.lower() == "jedecheck" or app.lower() == "jedec":
             embed = discord.Embed(description=desc.format(desc_jedecheck))
         else:
             embed = discord.Embed(description=desc.format(desc_pksm) + "\n" + desc.format(desc_checkpoint) + "\n" + desc.format(desc_pickr) + "\n" + desc.format(desc_sharkive) + "\n" + desc.format(desc_teamlist) + "\n" +
@@ -91,9 +91,9 @@ class Info:
             embed = discord.Embed(description="You can read Sharkive's README [here](https://github.com/FlagBrew/Sharkive/blob/master/README.md).")
         elif app.lower() == "servepkx":
             embed = discord.Embed(title="Servepkx READMEs")
-            embed.add_field(name="Servepkx-Browser", value="You can read servepkx's README [here](https://github.com/FlagBrew/servepkx/blob/master/servepkx-browser/README.md).", inline=False)
-            embed.add_field(name="Servepkx-Go", value="You can read servepkx-go's README [here](https://github.com/FlagBrew/servepkx/blob/master/servepkx-go/README.md).", inline=False)
-            embed.add_field(name="Servepkx-GUI", value="You can read servepkx-gui's README [here](https://github.com/FlagBrew/servepkx/blob/master/servepkx-gui/README.md).", inline=False)
+            embed.add_field(name="servepkx-browser", value="You can read servepkx's README [here](https://github.com/FlagBrew/servepkx/blob/master/servepkx-browser/README.md).", inline=False)
+            embed.add_field(name="servepkx-go", value="You can read servepkx-go's README [here](https://github.com/FlagBrew/servepkx/blob/master/servepkx-go/README.md).", inline=False)
+            embed.add_field(name="servepkx-gui", value="You can read servepkx-gui's README [here](https://github.com/FlagBrew/servepkx/blob/master/servepkx-gui/README.md).", inline=False)
         elif app.lower() == "teamlistfiller" or app.lower() == "teamlist" or app.lower() == "tl":
             embed = discord.Embed(description="You can read TeamListFiller's README [here](https://github.com/FlagBrew/TeamListFiller/blob/master/README.md).")
         elif app.lower() == "qraken":
@@ -106,7 +106,7 @@ class Info:
             embed = discord.Embed(description="You can read Checkpoint's README [here](https://github.com/FlagBrew/Checkpoint/blob/master/README.md).")
         elif app.lower() == "pksm":
             embed = discord.Embed(description="You can read PKSM's README [here](https://github.com/FlagBrew/PKSM/blob/master/README.md).")
-        elif app.lower() == "jedecheck" or app.lower() == "jede":
+        elif app.lower() == "jedecheck" or app.lower() == "jedec":
             embed = discord.Embed(description="You can read JEDECheck's README [here](https://github.com/FlagBrew/JEDECheck/blob/master/README.md).")
         else:
             return await ctx.send("Input not given or recognized. Available READMEs: `pksmscript`, `servelegality`, `sharkive`, `servepkx`, `teamlistfiller`, `qraken`, `2048`, `pickr`, `checkpoint`, `pksm`, 'jedecheck'.")
@@ -120,7 +120,7 @@ class Info:
     @commands.command(aliases=['patron'])
     async def patreon(self, ctx):
         """Donate here"""
-        await ctx.send("You can donate to Bernardo on Patreon here: <https://www.patreon.com/BernardoGiordano>.")
+        await ctx.send("You can donate to FlagBrew on Patreon here: <https://www.patreon.com/FlagBrew>.\nYou can also donate to Bernardo on Patreon here: <https://www.patreon.com/BernardoGiordano>.")
         
     @commands.command()
     async def faq(self, ctx):
