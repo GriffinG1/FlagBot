@@ -13,6 +13,7 @@ class Moderation:
         self.bot = bot
         print('Addon "{}" loaded'.format(self.__class__.__name__))
     
+    @commands.guild_only()
     @commands.has_permissions(kick_members=True)    
     @commands.command(pass_context=True)
     async def kick(self, ctx, member:discord.Member, *, reason="No reason was given."):
@@ -30,7 +31,8 @@ class Moderation:
                 pass # bot blocked or not accepting DMs
             await member.kick(reason=reason)
             await ctx.send("Successfully kicked user {0.name}#{0.discriminator}!".format(member))
-    
+
+    @commands.guild_only()
     @commands.has_permissions(ban_members=True)    
     @commands.command(pass_context=True)
     async def ban(self, ctx, member:discord.Member, *, reason="No reason was given."):
@@ -53,6 +55,7 @@ class Moderation:
             embed.set_image(url="https://i.imgur.com/tEBrxUF.jpg")
             await ctx.send("Successfully banned user {0.name}#{0.discriminator}!".format(member), embed=embed)
             
+    @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.command(aliases=['p'])
     async def purge(self, ctx, amount=0):

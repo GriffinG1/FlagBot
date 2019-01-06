@@ -50,7 +50,7 @@ class Utility:
             await user.remove_roles(role)
             return True
         
-        
+    @commands.guild_only()
     @commands.command()
     async def togglerole(self, ctx, *, role=""):
         """Allows user to toggle update roles. You can use .masstoggle to apply all roles at once.
@@ -88,6 +88,7 @@ class Utility:
         except discord.errors.Forbidden:
             await ctx.send(ctx.author.mention + ' ' + info_string, delete_after=5)
             
+    @commands.guild_only()
     @commands.command()
     async def masstoggle(self, ctx):
         """Allows a user to toggle all possible update roles. Use .help toggleroles to see possible roles."""
