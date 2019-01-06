@@ -41,13 +41,6 @@ try:
 except KeyError:
     token = config['Main']['token']
     heroku = False
-    
-@bot.check # taken and modified from https://discordpy.readthedocs.io/en/rewrite/ext/commands/commands.html#global-checks
-async def globally_block_dms(ctx):
-    if ctx.guild is None:
-        raise discord.ext.commands.NoPrivateMessage('test')
-        return False
-    return True
         
 
 # mostly taken from https://github.com/Rapptz/discord.py/blob/async/discord/ext/commands/bot.py
