@@ -20,6 +20,7 @@ class Moderation:
         member -> discord.User object, can be limited.
         reason -> reason to ban
         """
+        reason += "\n\nAction done by {} (This is to deal with audit log scraping".format(ctx.author)
         if member.id == ctx.message.author.id:
             return await ctx.send("You can't ban yourself, obviously")
         else:
