@@ -20,7 +20,6 @@ class Moderation:
         member -> discord.User object, can be limited.
         reason -> reason to ban
         """
-        reason += "\n\nAction done by {} (This is to deal with audit log scraping".format(ctx.author)
         if member.id == ctx.message.author.id:
             return await ctx.send("You can't ban yourself, obviously")
         else:
@@ -28,6 +27,7 @@ class Moderation:
                 await member.send("You were banned from FlagBrew for:\n\n`{}`\n\nIf you believe this to be in error, please contact a staff member".format(reason))
             except:
                 pass # bot blocked or not accepting DMs
+            reason += "\n\nAction done by {} (This is to deal with audit log scraping".format(ctx.author)
             try:
                 await ctx.guild.ban(member, delete_message_days=0, reason=reason)
             except discord.Forbidden: # i have no clue
