@@ -13,11 +13,12 @@ class Moderation:
         self.bot = bot
         print('Addon "{}" loaded'.format(self.__class__.__name__))
     
-    async def generic_ban_things(ctx, member):
+    async def generic_ban_things(ctx, member, reason):
         """Generic stuff that is used by both ban commands.
         
         ctx -> Commands.Context object.
         member -> discord.User object, can be limited.
+        reason -> reason to ban
         """
         if member.id == ctx.message.author.id:
             return await ctx.send("You can't ban yourself, obviously")
@@ -57,7 +58,7 @@ class Moderation:
         """Ban a user."""
         if not member: # Edge case in which UserConverter may fail to get a User
             return await ctx.send("Could not find user. They may no longer be in the global User cache. If you are sure this is a valid user, try `.banid` instead.")
-        await self.generic_ban_things(ctx, member)
+        await self.generic_ban_things(ctx, member, reason)
 
     @commands.has_permissions(ban_members=True)    
     @commands.command(pass_context=True)
@@ -68,7 +69,7 @@ class Moderation:
         member = await self.bot.get_user_info(member)
         if not member:
             return await ctx.send("This is not a valid discord user.")
-        await self.generic_ban_things(ctx, member)
+        await self.generic_ban_things(ctx, member, reason)
 
     @commands.has_permissions(ban_members=True)
     @commands.command(aliases=['p'])
