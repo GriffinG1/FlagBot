@@ -46,6 +46,7 @@ token = config.token
 bot = commands.Bot(command_prefix=prefix, description=description)
 
 bot.is_mongodb = config.is_mongodb
+bot.coreconsole_server = config.coreconsole_server
 
 if not os.path.exists('saves/warns.json'):
     data = {}
@@ -191,7 +192,8 @@ addons = [
     'addons.info',
     'addons.mod',
     'addons.events',
-    'addons.warns'
+    'addons.warns',
+    'addons.pkhex'
 ]
 
 failed_addons = []
