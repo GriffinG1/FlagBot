@@ -39,9 +39,9 @@ class PKHeX(commands.Cog):
             file = b.getvalue()
         else:
             try:
-            async with aiohttp.ClientSession() as session:  # Stolen from https://stackoverflow.com/a/50236446 as I have no aiohttp knowledge
-                async with session.get(data) as resp:
-                    file = io.BytesIO(await resp.read())
+                async with aiohttp.ClientSession() as session:  # Stolen from https://stackoverflow.com/a/50236446 as I have no aiohttp knowledge
+                    async with session.get(data) as resp:
+                        file = io.BytesIO(await resp.read())
             except aiohttp.client_exceptions.InvalidURL:
                 await ctx.send("The provided data was not valid.")
                 return 400
@@ -98,6 +98,16 @@ class PKHeX(commands.Cog):
         embed.set_thumbnail(url=sprite)
         embed.colour = discord.Colour.green() if rj["IllegalReasons"] == "Legal!" else discord.Colour.red()
         await ctx.send(embed=embed)
+
+    @commands.command(name='gq')
+    async def gen_pkmn_qr(self, ctx, data=""):
+        """Gens a QR code that PKSM can read. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
+        r = await self.process_file(ctx, data, ctx.message.attachments, "pkmn_qr")
+        if r == 400:
+            return
+        qr = discord.File(io.BytesIO(r.content), 'pokemon_qr.png')
+        d = (await self.process_file(ctx, data, ctx.message.attachments, "pkmn_info")).json()
+        await ctx.send("QR containing a {} for Generation {}".format(d["Species"], d["Generation"]), file=qr)
 
 
 def setup(bot):
