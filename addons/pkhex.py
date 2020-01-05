@@ -3,6 +3,7 @@ import requests
 import aiohttp
 import io
 import json
+import base64
 from datetime import datetime
 from discord.ext import commands
 
@@ -78,7 +79,7 @@ class PKHeX(commands.Cog):
             val = ""
             for x in values[1:]:
                 val += x + " "
-            embed.description += values[0] + val
+            embed.description += values[0] + val + "\n"
         await ctx.send(embed=embed)
 
     @commands.command(name='pi')
@@ -187,17 +188,16 @@ class PKHeX(commands.Cog):
         """Looks up a pokemon from the GPSS using its download code"""
         if not code.isdigit():
             return await ctx.send("GPSS codes are solely comprised of numbers. Please try again.")
-        ping = requests.get(self.bot.api_url + "api/v1/bot/ping")
+        ping = requests.get(self.bot.api_url)
         if not ping.status_code == 200:
-            return await ctx.send("The CoreConsole server is currently down, and as such no commands in the PKHeX module can be used.")
-        gpss_max_pokemon = 5000
+            return await ctx.send("I could not make a connection to flagbrew.org, so this command cannot be used currently.")
         msg = await ctx.send("Attempting to fetch pokemon...")
-        r = requests.get(self.bot.api_url + "api/v1/gpss/all?count=" + str(gpss_max_pokemon))
+        r = requests.get(self.bot.api_url + "api/v1/gpss/search/" + code)
         rj = r.json()
         for pkmn in rj["results"]:
             if pkmn["code"] == code:
                 pkmn_data = pkmn["pokemon"]
-                embed = discord.Embed(description="[GPSS Page]({})".format(self.bot.api_url + "gpss/view" + code))
+                embed = discord.Embed(description="[GPSS Page]({})".format(self.bot.api_url + "gpss/view/" + code))
                 embed.set_author(icon_url=pkmn_data["SpeciesSpriteURL"], name="Data for {}".format(pkmn_data["Nickname"]))
                 embed.add_field(name="Species", value=pkmn_data["Species"])
                 embed.add_field(name="Level", value=pkmn_data["Level"])
@@ -215,14 +215,14 @@ class PKHeX(commands.Cog):
                 embed.add_field(name="Moves", value="**1**: {}\n**2**: {}\n**3**: {}\n**4**: {}".format(pkmn_data["Move1"], pkmn_data["Move2"], pkmn_data["Move3"], pkmn_data["Move4"]))
                 embed.set_thumbnail(url=self.bot.api_url + "gpss/qr/{}".format(code))
                 return await msg.edit(embed=embed, content=None)
-        await msg.edit(content="There either was no pokemon on the GPSS with the code `{}`, or the pokemon is not within my accessible range of {} pokemon.".format(code, gpss_max_pokemon))
+        await msg.edit(content="There was no pokemon on the GPSS with the code `{}`.".format(code))
 
     @commands.command(name="gpsspost")
     async def gpss_upload(self, ctx, data=""):
         """Allows uploading a pokemon to the GPSS. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
-        ping = requests.get(self.bot.api_url + "api/v1/bot/ping")
+        ping = requests.get(self.bot.api_url)
         if not ping.status_code == 200:
-            return await ctx.send("The CoreConsole server is currently down, and as such no commands in the PKHeX module can be used.")
+            return await ctx.send("I could not make a connection to flagbrew.org, so this command cannot be used currently.")
         r = await self.process_file(ctx, data, ctx.message.attachments, "gpss/share", True)
         if r.status_code == 400:
             return await ctx.send("That file is either not a pokemon, or something went wrong.")
@@ -233,6 +233,29 @@ class PKHeX(commands.Cog):
         elif r.status_code == 200:
             return await ctx.send("The provided pokemon has already been uploaded. You can find it at: {}gpss/view/{}".format(self.bot.api_url, r.text))
         await ctx.send("Your pokemon has been uploaded! You can find it at: {}gpss/view/{}".format(self.bot.api_url, r.text))
+
+    @commands.command()
+    async def legalize(self, ctx, data=""):
+        """Legalizes a pokemon as much as possible. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
+        ping = requests.get(self.bot.api_url + "api/v1/bot/ping")
+        if not ping.status_code == 200:
+            return await ctx.send("The CoreConsole server is currently down, and as such no commands in the PKHeX module can be used.")
+        r = await self.process_file(ctx, data, ctx.message.attachments, "api/v1/bot/auto_legality")
+        rj = r.json()
+        if not rj["ran"]:
+            return await ctx.send("That pokemon is already legal!")
+        pokemon_b64 = rj["pokemon"].encode("ascii")
+        qr_b64 = rj["qr"].encode("ascii")
+        pokemon_decoded = base64.decodebytes(pokemon_b64)
+        qr_decoded = base64.decodebytes(qr_b64)
+        if data:
+            extension = data[-4:]
+        else:
+            extension = ctx.message.attachments[0].filename[-4:]
+        pokemon = discord.File(io.BytesIO(pokemon_decoded), 'pokemon_pkx{}'.format(extension))
+        qr = discord.File(io.BytesIO(qr_decoded), 'pokemon_qr.png')
+
+        await ctx.send(files=[pokemon, qr])
 
 
 def setup(bot):
