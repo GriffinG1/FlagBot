@@ -118,7 +118,7 @@ async def on_command_error(ctx, error):
         tb = traceback.format_exception(type(error), error, error.__traceback__)
         error_trace = "".join(tb)
         print(error_trace)
-        embed = discord.Embed(description=error_trace)
+        embed = discord.Embed(description=error_trace.replace("__", "_\_").replace("**", "*\*"))
         await bot.err_logs_channel.send("An error occurred while processing the `{}` command in channel `{}`.".format(ctx.command.name, ctx.message.channel), embed=embed)
 
 
@@ -131,7 +131,7 @@ async def on_error(event_method, *args, **kwargs):
     tb = traceback.format_exc()
     error_trace = "".join(tb)
     print(error_trace)
-    embed = discord.Embed(description=error_trace)
+    embed = discord.Embed(description=error_trace.replace("__", "_\_").replace("**", "*\*"))
     await bot.err_logs_channel.send("An error occurred while processing `{}`.".format(event_method), embed=embed)
 
 
