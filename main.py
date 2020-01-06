@@ -110,7 +110,7 @@ async def on_command_error(ctx, error):
     elif isinstance(error, discord.ext.commands.errors.CheckFailure):
         await ctx.send("You don't have permission to use this command.")
     elif isinstance(error, discord.ext.commands.errors.CommandOnCooldown):
-        await ctx.send("{} This command is on a cooldown.".format(ctx.author.mention), delete_after=10)
+        await ctx.send("{} This command is on a cooldown.".format(ctx.author.mention))
     else:
         if ctx.command:
             await ctx.send("An error occurred while processing the `{}` command.".format(ctx.command.name))

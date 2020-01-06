@@ -7,7 +7,7 @@ import base64
 from datetime import datetime
 from discord.ext import commands
 
-class PKHeX(commands.Cog):
+class pkhex(commands.Cog):
 
     """Handles all the PKHeX Related Commands. Does not load if api_url is not defined in config"""
 
@@ -59,7 +59,7 @@ class PKHeX(commands.Cog):
             return 400
         return r
 
-    @commands.command(name='cl')
+    @commands.command(aliases=['illegal', 'legality'])
     async def check_legality(self, ctx, *, data=""):
         """Checks the legality of either a provided URL or attached pkx file. URL *must* be a direct download link"""
         ping = requests.get(self.bot.api_url + "api/v1/bot/ping")
@@ -82,7 +82,7 @@ class PKHeX(commands.Cog):
             embed.description += values[0] + val + "\n"
         await ctx.send(embed=embed)
 
-    @commands.command(name='pi')
+    @commands.command(name='pokeinfo')
     async def poke_info(self, ctx, data=""):
         """Returns an embed with a Pokemon's nickname, species, and a few others. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
         ping = requests.get(self.bot.api_url + "api/v1/bot/ping")
@@ -114,7 +114,7 @@ class PKHeX(commands.Cog):
         except Exception as e:
             return await ctx.send("There was an error showing the data for this pokemon. {}, {}, or {} please check this out!\n{} please do not delete the file. Exception below.\n\n```{}```".format(self.bot.creator.mention, self.bot.pie.mention, self.bot.allen.mention, ctx.author.mention, e))
 
-    @commands.command(name='gq')
+    @commands.command(name='qr')
     async def gen_pkmn_qr(self, ctx, data=""):
         """Gens a QR code that PKSM can read. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
         ping = requests.get(self.bot.api_url + "api/v1/bot/ping")
@@ -127,7 +127,7 @@ class PKHeX(commands.Cog):
         d = (await self.process_file(ctx, data, ctx.message.attachments, "api/v1/bot/pkmn_info")).json()
         await ctx.send("QR containing a {} for Generation {}".format(d["Species"], d["Generation"]), file=qr)
 
-    @commands.command(name='cm')
+    @commands.command(name='learns')
     async def check_moves(self, ctx, *, input_data):
         """Checks if a given pokemon can learn moves. Separate moves using pipes. Example: .cm pikachu | quick attack | hail"""
         ping = requests.get(self.bot.api_url + "api/v1/bot/ping")
@@ -151,7 +151,7 @@ class PKHeX(commands.Cog):
             embed.description += "**{}** is {} learnable.\n".format(move["MoveName"].title(), "not" if not move["Learnable"] else "")
         await ctx.send(embed=embed)
 
-    @commands.command(name='ce')
+    @commands.command(name='find')
     async def check_encounters(self, ctx, generation: int, *, input_data):
         """Outputs the locations a given pokemon can be found. Separate data using pipes. Example: .cm 6 pikachu | volt tackle"""
         ping = requests.get(self.bot.api_url + "api/v1/bot/ping")
@@ -165,6 +165,8 @@ class PKHeX(commands.Cog):
             "query": pokemon + "|" + "|".join(moves)
         }
         r = requests.post(self.bot.api_url + "api/v1/bot/query/encounter", data=data)
+        if r.status_code == 400:
+            return await ctx.send("Something you sent was invalid. Please double check your data and try again.")
         rj = r.json()
         embed = discord.Embed(title="Encounter Data for {} in Generation {}{}{}".format(pokemon.title(), generation, " with move(s) " if len(moves) > 0 else "", ", ".join([move.title() for move in moves])))
         generation_data = rj["Gen{}".format(generation)]
@@ -261,4 +263,4 @@ class PKHeX(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(PKHeX(bot))
+    bot.add_cog(pkhex(bot))
