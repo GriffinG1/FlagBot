@@ -18,7 +18,7 @@ class PKHeX(commands.Cog):
         except requests.exceptions.MissingSchema:
             print("Error: api_url was not a valid url. Could not load pkhex.py")
         if not r.status_code == 200:
-            print("Error: api_url was left blank in config.py, or the server is down. Commands in the PKHeX module cannot be used until this is rectified.")
+            print("Error: api_url was left blank in config.py, or the server is down. Commands in the PKHeX module will not work properly until this is rectified.")
         print('Addon "{}" loaded'.format(self.__class__.__name__))
 
     @commands.command(hidden=True)
@@ -235,11 +235,13 @@ class PKHeX(commands.Cog):
         await ctx.send("Your pokemon has been uploaded! You can find it at: {}gpss/view/{}".format(self.bot.api_url, r.text))
 
     @commands.command()
+    @commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
     async def legalize(self, ctx, data=""):
         """Legalizes a pokemon as much as possible. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
         ping = requests.get(self.bot.api_url + "api/v1/bot/ping")
         if not ping.status_code == 200:
             return await ctx.send("The CoreConsole server is currently down, and as such no commands in the PKHeX module can be used.")
+        msg = await ctx.send("Attempting to legalize pokemon...")
         r = await self.process_file(ctx, data, ctx.message.attachments, "api/v1/bot/auto_legality")
         rj = r.json()
         if not rj["ran"]:
@@ -254,7 +256,7 @@ class PKHeX(commands.Cog):
             extension = ctx.message.attachments[0].filename[-4:]
         pokemon = discord.File(io.BytesIO(pokemon_decoded), 'pokemon_pkx{}'.format(extension))
         qr = discord.File(io.BytesIO(qr_decoded), 'pokemon_qr.png')
-
+        await msg.delete()
         await ctx.send(files=[pokemon, qr])
 
 
