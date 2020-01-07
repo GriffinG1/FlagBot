@@ -39,13 +39,15 @@ class pkhex(commands.Cog):
         elif not data:
             atch = attachments[0]
             if atch.size > 400:
-                return await ctx.send("The attached file was too large.")
+                await ctx.send("The attached file was too large.")
+                return 400
             b = io.BytesIO()
             await atch.save(b)
             file = b.getvalue()
         else:
             if not data[-4:-1] == ".pk":
-                return await ctx.send("That isn't a pkx file!")
+                await ctx.send("That isn't a pkx file!")
+                return 400
             try:
                 async with aiohttp.ClientSession() as session:  # Stolen from https://stackoverflow.com/a/50236446 as I have no aiohttp knowledge
                     async with session.get(data) as resp:
@@ -58,7 +60,7 @@ class pkhex(commands.Cog):
         r = requests.post(url=url, files=files)
         if is_gpss:
             pass
-        elif r.status_code == 400:
+        elif r.status_code == 400 or r.status_code == 413:
             await ctx.send("The provided file was invalid.")
             return 400
         return r
