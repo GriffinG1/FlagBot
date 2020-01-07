@@ -83,7 +83,7 @@ class pkhex(commands.Cog):
             val = ""
             for x in values[1:]:
                 val += x + " "
-            embed.description += values[0] + val + "\n"
+            embed.description += values[0] + val
         await ctx.send(embed=embed)
 
     @commands.command(name='pokeinfo')
@@ -124,7 +124,7 @@ class pkhex(commands.Cog):
         ping = requests.get(self.bot.api_url + "api/v1/bot/ping")
         if not ping.status_code == 200:
             return await ctx.send("The CoreConsole server is currently down, and as such no commands in the PKHeX module can be used.")
-        r = await self.process_file(ctx, data, ctx.message.attachments, "bot/pkmn_qr")
+        r = await self.process_file(ctx, data, ctx.message.attachments, "api/v1/bot/pkmn_qr")
         if r == 400:
             return
         qr = discord.File(io.BytesIO(r.content), 'pokemon_qr.png')
@@ -251,7 +251,9 @@ class pkhex(commands.Cog):
         r = await self.process_file(ctx, data, ctx.message.attachments, "api/v1/bot/auto_legality")
         rj = r.json()
         if not rj["ran"]:
-            return await ctx.send("That pokemon is already legal!")
+            return await msg.edit(content="That pokemon is already legal!")
+        elif not rj["success"]:
+            return await msg.edit(content="That pokemon couldn't be legalized!")
         pokemon_b64 = rj["pokemon"].encode("ascii")
         qr_b64 = rj["qr"].encode("ascii")
         pokemon_decoded = base64.decodebytes(pokemon_b64)
