@@ -38,10 +38,14 @@ class pkhex(commands.Cog):
             return 400
         elif not data:
             atch = attachments[0]
+            if atch.size > 400:
+                return await ctx.send("The attached file was too large.")
             b = io.BytesIO()
             await atch.save(b)
             file = b.getvalue()
         else:
+            if not data[-4:-1] == ".pk":
+                return await ctx.send("That isn't a pkx file!")
             try:
                 async with aiohttp.ClientSession() as session:  # Stolen from https://stackoverflow.com/a/50236446 as I have no aiohttp knowledge
                     async with session.get(data) as resp:
