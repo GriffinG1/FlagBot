@@ -17,7 +17,7 @@ class pkhex(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-            raise APIConnectionError("Connection not established")
+        raise APIConnectionError("Connection not established")
         print('Addon "{}" loaded'.format(self.__class__.__name__))
 
     async def ping_api(self):
