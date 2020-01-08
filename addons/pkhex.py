@@ -259,6 +259,7 @@ class pkhex(commands.Cog):
     @commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
     async def legalize(self, ctx, data=""):
         """Legalizes a pokemon as much as possible. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
+        upload_channel = await self.bot.fetch_channel(664548059253964847)  # Points to #legalize-file-upload on FlagBrew
         if not await self.ping_api() == 200:
             return await ctx.send("The CoreConsole server is currently down, and as such no commands in the PKHeX module can be used.")
         msg = await ctx.send("Attempting to legalize pokemon...")
@@ -278,11 +279,12 @@ class pkhex(commands.Cog):
             filename = ctx.message.attachments[0].filename
         pokemon = discord.File(io.BytesIO(pokemon_decoded), "fixed-" + filename)
         qr = discord.File(io.BytesIO(qr_decoded), 'pokemon_qr.png')
+        m = await upload_channel.send(file=pokemon)
         embed = discord.Embed(title="Fixed Legality Issues for {}".format(rj["species"]), description="[Download link]({})\n".format(m.attachments[0].url))
         embed = self.list_to_embed(embed, rj["report"])
         embed.set_thumbnail(url="attachment://pokemon_qr.png")
         await msg.delete()
-        await ctx.send(files=[pokemon, qr])
+        await ctx.send(embed=embed, file=qr)
 
 
 def setup(bot):
