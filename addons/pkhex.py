@@ -72,11 +72,18 @@ class pkhex(commands.Cog):
         embed.add_field(name="Nature", value=data["Nature"])
         if int(data["Generation"]) > 2:
             embed.add_field(name="Ability", value=data["Ability"])
+        else:
+            embed.add_field(name="Ability", value="N/A")
         embed.add_field(name="Original Trainer", value=data["OT"])
         embed.add_field(name="Handling Trainer", value=data["HT"])
-        if int(data["Generation"]) > 2:
+        if int(data["Generation"]) > 2 and not data["MetLoc"] is "":
             embed.add_field(name="Met Location", value=data["MetLoc"])
+        else:
+            embed.add_field(name="Met Location", value="N/A")
+        if int(data["Generation"]) > 2:
             embed.add_field(name="Origin Game", value=data["Version"])
+        else:
+            embed.add_field(name="Origin Game", value="N/A")
         embed.add_field(name="Captured In", value=data["Ball"])
         embed.add_field(name="EVs", value="**HP**: {}\n**Atk**: {}\n**Def**: {}\n**SpAtk**: {}\n**SpDef**: {}\n**Spd**: {}".format(data["HP_EV"], data["ATK_EV"], data["DEF_EV"], data["SPA_EV"], data["SPD_EV"], data["SPE_EV"]))
         embed.add_field(name="IVs", value="**HP**: {}\n**Atk**: {}\n**Def**: {}\n**SpAtk**: {}\n**SpDef**: {}\n**Spd**: {}".format(data["HP_IV"], data["ATK_IV"], data["DEF_IV"], data["SPA_IV"], data["SPD_IV"], data["SPE_IV"]))
@@ -144,7 +151,6 @@ class pkhex(commands.Cog):
             return
         d = await self.process_file(ctx, data, ctx.message.attachments, "api/v1/bot/pkmn_info")
         d = d[1]
-        print(r[2])
         qr = discord.File(io.BytesIO(r[2]), 'pokemon_qr.png')
         await ctx.send("QR containing a {} for Generation {}".format(d["Species"], d["Generation"]), file=qr)
 
@@ -165,9 +171,7 @@ class pkhex(commands.Cog):
         async with self.bot.session.post(self.bot.api_url + "api/v1/bot/query/move_learn", data=data) as r:
             if r.status == 400:
                 return await ctx.send("Something you sent was invalid. Please double check your data and try again.")
-            print(r)
             rj = await r.json()
-            print(rj)
             embed = discord.Embed(title="Move Lookup for {}".format(pokemon.title()), description="")
             for move in rj:
                 embed.description += "**{}** is {} learnable.\n".format(move["MoveName"].title(), "not" if not move["Learnable"] else "")
