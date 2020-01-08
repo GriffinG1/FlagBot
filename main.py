@@ -12,6 +12,7 @@ import sys
 import argparse
 import json
 import pymongo
+import aiohttp
 from discord.ext import commands
 
 try:
@@ -80,6 +81,7 @@ if bot.is_mongodb:
 bot.site_secret = config.secret
 bot.github_user = config.github_username
 bot.github_pass = config.github_password
+bot.session = aiohttp.ClientSession(loop=asyncio.get_event_loop())
 
 bot.dir_path = os.path.dirname(os.path.realpath(__file__))
 
