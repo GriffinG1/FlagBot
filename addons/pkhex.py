@@ -278,6 +278,9 @@ class pkhex(commands.Cog):
             filename = ctx.message.attachments[0].filename
         pokemon = discord.File(io.BytesIO(pokemon_decoded), "fixed-" + filename)
         qr = discord.File(io.BytesIO(qr_decoded), 'pokemon_qr.png')
+        embed = discord.Embed(title="Fixed Legality Issues for {}".format(rj["species"]), description="[Download link]({})\n".format(m.attachments[0].url))
+        embed = self.list_to_embed(embed, rj["report"])
+        embed.set_thumbnail(url="attachment://pokemon_qr.png")
         await msg.delete()
         await ctx.send(files=[pokemon, qr])
 
