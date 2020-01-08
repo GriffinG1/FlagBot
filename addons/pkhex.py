@@ -91,6 +91,16 @@ class pkhex(commands.Cog):
         embed.add_field(name="Moves", value="**1**: {}\n**2**: {}\n**3**: {}\n**4**: {}".format(data["Move1"], data["Move2"], data["Move3"], data["Move4"]))
         return embed
 
+    def list_to_embed(self, embed, l):
+        for x in l:
+            values = x.split(": ")
+            values[0] = "**" + values[0] + "**: "
+            val = ""
+            for x in values[1:]:
+                val += x + " "
+            embed.description += values[0] + val
+        return embed
+
     @commands.command(hidden=True)
     async def ping_cc(self, ctx):
         """Pings the CoreConsole server"""
@@ -115,13 +125,7 @@ class pkhex(commands.Cog):
         if reasons[0] == "Legal!":
             return await ctx.send("That Pokemon is legal!")
         embed = discord.Embed(title="Legality Issues", description="", colour=discord.Colour.red())
-        for reason in reasons:
-            values = reason.split(": ")
-            values[0] = "**" + values[0] + "**: "
-            val = ""
-            for x in values[1:]:
-                val += x + " "
-            embed.description += values[0] + val
+        embed = self.list_to_embed(embed, reasons)
         await ctx.send(embed=embed)
 
     @commands.command(name='pokeinfo')
