@@ -5,6 +5,7 @@ import io
 import json
 import base64
 import validators
+from exceptions import APIConnectionError
 from datetime import datetime
 from discord.ext import commands
 
@@ -14,7 +15,7 @@ class pkhex(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-            print("Error: api_url was left blank in config.py, or the server is down. Commands in the PKHeX module will not work properly until this is rectified.")
+            raise APIConnectionError("Connection not established")
         print('Addon "{}" loaded'.format(self.__class__.__name__))
 
     async def ping_api(self):
@@ -58,8 +59,11 @@ class pkhex(commands.Cog):
             except aiohttp.client_exceptions.ContentTypeError:
                 rj = {}
             content = await r.content.read()
-            if not len(content) > 0:
+            if content is b'':
                 content = await r.read()
+            if content is b'':
+                await ctx.send("Couldn't get response content. {} and {} please investigate!".format(self.bot.creator.mention, self.bot.allen.mention))
+                return 400
             return [r.status, rj, content]
 
     def embed_fields(self, ctx, embed, data):
@@ -90,7 +94,7 @@ class pkhex(commands.Cog):
         ping = now - msgtime
         await ctx.send("🏓 CoreConsole response time is {} milliseconds. Current CoreConsole status code is {}.".format(str(ping.microseconds / 1000.0), r))
 
-    @commands.command(aliases=['illegal', 'legality'])
+    @commands.command(name='legality', aliases=['illegal'])
     async def check_legality(self, ctx, *, data=""):
         """Checks the legality of either a provided URL or attached pkx file. URL *must* be a direct download link"""
         if not await self.ping_api() == 200:
@@ -144,7 +148,7 @@ class pkhex(commands.Cog):
         qr = discord.File(io.BytesIO(r[2]), 'pokemon_qr.png')
         await ctx.send("QR containing a {} for Generation {}".format(d["Species"], d["Generation"]), file=qr)
 
-    @commands.command(name='learns')
+    @commands.command(name='learns', aliases=['learn'])
     async def check_moves(self, ctx, *, input_data):
         """Checks if a given pokemon can learn moves. Separate moves using pipes. Example: .cm pikachu | quick attack | hail"""
         if not await self.ping_api() == 200:

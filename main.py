@@ -13,6 +13,7 @@ import argparse
 import json
 import pymongo
 import aiohttp
+from exceptions import APIConnectionError
 from discord.ext import commands
 
 try:
@@ -113,6 +114,8 @@ async def on_command_error(ctx, error):
         await ctx.send("You don't have permission to use this command.")
     elif isinstance(error, discord.ext.commands.errors.CommandOnCooldown):
         await ctx.send("{} This command is on a cooldown.".format(ctx.author.mention))
+    elif isinstance(error, APIConnectionError):
+        print("Error: api_url was left blank in config.py, or the server is down. Commands in the PKHeX module will not work properly until this is rectified.")
     else:
         if ctx.command:
             await ctx.send("An error occurred while processing the `{}` command.".format(ctx.command.name))
@@ -188,7 +191,7 @@ async def on_ready():
 
 
 # loads extensions
-addons = [
+cogs = [
     'addons.utility',
     'addons.info',
     'addons.mod',
@@ -197,15 +200,19 @@ addons = [
     'addons.pkhex'
 ]
 
-failed_addons = []
+failed_cogs = []
 
-for extension in addons:
+for extension in cogs:
     try:
         bot.load_extension(extension)
+    except commands.ExtensionFailed as e:
+        if e.original.__class__ == APIConnectionError:
+            print("API server is down, so {} wasn't loaded.".format(extension))
+            continue
     except Exception as e:
         print('{} failed to load.\n{}: {}'.format(extension, type(e).__name__, e))
-        failed_addons.append([extension, type(e).__name__, e])
-if not failed_addons:
+        failed_cogs.append([extension, type(e).__name__, e])
+if not failed_cogs:
     print('All addons loaded!')
 
 
@@ -215,6 +222,9 @@ async def load(ctx, *, module):
     if ctx.author == ctx.guild.owner or ctx.author == bot.creator:
         try:
             bot.load_extension("addons.{}".format(module))
+        except commands.ExtensionFailed as e:
+            if e.original.__class__ == APIConnectionError:
+                return await ctx.send("`{}.py` was not loaded due to the API being down.".format(module))
         except Exception as e:
             await ctx.send(':anger: Failed!\n```\n{}: {}\n```'.format(type(e).__name__, e))
         else:
@@ -235,6 +245,10 @@ async def reload(ctx):
                 try:
                     bot.unload_extension("addons.{}".format(addon))
                     bot.load_extension("addons.{}".format(addon))
+                except commands.ExtensionFailed as e:
+                    if e.original.__class__ == APIConnectionError:
+                        await ctx.send("`{}.py` was not loaded due to the API being down.".format(addon))
+                        continue
                 except Exception as e:
                     errors += 'Failed to load addon: `{}.py` due to `{}: {}`\n'.format(addon, type(e).__name__, e)
         if not errors:
