@@ -5,6 +5,8 @@ import io
 import json
 import base64
 import validators
+import os
+import urllib
 from exceptions import APIConnectionError
 from datetime import datetime
 from discord.ext import commands
@@ -42,9 +44,8 @@ class pkhex(commands.Cog):
                 await ctx.send("That isn't a pkx file!")
                 return 400
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(data) as resp:
-                        file = io.BytesIO(await resp.read())
+                async with self.bot.session.get(data) as r:
+                    file = io.BytesIO(await r.read())
             except aiohttp.client_exceptions.InvalidURL:
                 await ctx.send("The provided data was not valid.")
                 return 400
@@ -268,10 +269,10 @@ class pkhex(commands.Cog):
         pokemon_decoded = base64.decodebytes(pokemon_b64)
         qr_decoded = base64.decodebytes(qr_b64)
         if data:
-            extension = data[-4:]
+            filename = os.path.basename(urllib.parse.urlparse(data).path)
         else:
-            extension = ctx.message.attachments[0].filename[-4:]
-        pokemon = discord.File(io.BytesIO(pokemon_decoded), 'pokemon_pkx{}'.format(extension))
+            filename = ctx.message.attachments[0].filename
+        pokemon = discord.File(io.BytesIO(pokemon_decoded), "fixed-" + filename)
         qr = discord.File(io.BytesIO(qr_decoded), 'pokemon_qr.png')
         await msg.delete()
         await ctx.send(files=[pokemon, qr])
