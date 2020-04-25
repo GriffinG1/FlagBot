@@ -25,7 +25,7 @@ class pkhex(commands.Cog):
         async with self.bot.session.get(self.bot.api_url + "api/v1/bot/ping") as r:
             return r.status
 
-    async def process_file(self, ctx, data, attachments, url, is_gpss=False):
+    async def process_file(self, ctx, data, attachments, url, is_gpss=False, user_id=None):
         if not data and not attachments:
             await ctx.send("Error: No data was provided and no pkx file was attached.")
             return 400
@@ -51,7 +51,7 @@ class pkhex(commands.Cog):
                 await ctx.send("The provided data was not valid.")
                 return 400
         url = self.bot.api_url + url
-        files = {'pkmn': file}
+        files = {'pkmn': file, 'UID': user_id}
         async with self.bot.session.post(url=url, data=files) as r:
             if not is_gpss and (r.status == 400 or r.status == 413):
                 await ctx.send("The provided file was invalid.")
@@ -398,7 +398,7 @@ class pkhex(commands.Cog):
         async with self.bot.session.get(self.bot.api_url) as r:
             if not r.status == 200:
                 return await ctx.send("I could not make a connection to flagbrew.org, so this command cannot be used currently.")
-        r = await self.process_file(ctx, data, ctx.message.attachments, "gpss/share", True)
+        r = await self.process_file(ctx, data, ctx.message.attachments, "gpss/share", True, str(ctx.author.id))
         code = str(r[2], encoding='utf-8')
         if r[0] == 400:
             return await ctx.send("That file is either not a pokemon, or something went wrong.")
