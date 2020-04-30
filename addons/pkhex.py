@@ -51,8 +51,9 @@ class pkhex(commands.Cog):
                 await ctx.send("The provided data was not valid.")
                 return 400
         url = self.bot.api_url + url
-        files = {'pkmn': file, 'UID': user_id, 'secret': self.bot.site_secret}
-        async with self.bot.session.post(url=url, data=files) as r:
+        files = {'pkmn': file}
+        headers = {'UID': user_id, 'secret': self.bot.site_secret}
+        async with self.bot.session.post(url=url, data=files, headers=headers) as r:
             if not is_gpss and (r.status == 400 or r.status == 413):
                 await ctx.send("The provided file was invalid.")
                 return 400
