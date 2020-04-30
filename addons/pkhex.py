@@ -401,7 +401,9 @@ class pkhex(commands.Cog):
                 return await ctx.send("I could not make a connection to flagbrew.org, so this command cannot be used currently.")
         r = await self.process_file(ctx, data, ctx.message.attachments, "gpss/share", True, str(ctx.author.id))
         code = str(r[2], encoding='utf-8')
-        if r[0] == 400:
+        if len(code) > 10:
+            return await ctx.send("There seems to have been an issue getting the code for this upload. Please check <#586728153985056801> to confirm upload. If it didn't upload, try again later. {} and {} please investigate!".format(self.bot.creator.mention, self.bot.allen.mention))
+        elif r[0] == 400:
             return await ctx.send("That file is either not a pokemon, or something went wrong.")
         elif r[0] == 413:
             return await ctx.send("That file is too large. {} and {}, please investigate.".format(self.bot.pie.mention, self.bot.allen.mention))
