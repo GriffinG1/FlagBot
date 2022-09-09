@@ -9,6 +9,7 @@ import urllib
 import inspect
 from exceptions import PKHeXMissingArgs
 import addons.helper as helper
+import addons.pkhex_cores.encounters as encounters_module
 from addons.helper import restricted_to_bot
 from discord.ext import commands
 
@@ -426,9 +427,6 @@ class pkhex(commands.Cog):
     @commands.command(name='find')
     async def check_encounters(self, ctx, generation: str, *, input_data):
         """Outputs the locations a given pokemon can be found. Separate data using pipes. Example: .find 6 pikachu | volt tackle"""
-        ping = await self.ping_api_func()
-        if not isinstance(ping, aiohttp.ClientResponse) or not ping.status == 200:
-            return await ctx.send("The CoreAPI server is currently down, and as such no commands in the PKHeX module can be used.")
         try:
             int(generation)
         except ValueError:
@@ -441,33 +439,32 @@ class pkhex(commands.Cog):
         input_data = input_data.split("|")
         pokemon = input_data[0]
         moves = input_data[1:]
-        data = {
-            "query": pokemon + ("|" + "|".join(moves) if not len(moves) == 0 else ""),
-            "generation": generation.upper()
-        }
-        async with self.bot.session.post(self.bot.api_url + "api/Encounter", data=data) as resp:
-            if resp.status == 400:
-                return await ctx.send("Something you sent was invalid. Please double check your data and try again.")
-            resp_json = await resp.json()
-            embed = discord.Embed(title=f"Encounter Data for {pokemon.title()} in Generation {generation.upper()}{' with move(s) ' if len(moves) > 0 else ''}{', '.join([move.title() for move in moves])}")
-            for encs in resp_json['encounters']:
-                field_values = ""
-                for loc in encs["locations"]:
-                    games = (helper.game_dict[x] if x in helper.game_dict.keys() else x for x in loc["games"])
-                    games_str = ", ".join(games)
-                    games_str = games_str.replace("GG", "LGPE")
-                    if encs["encounterType"] == "Egg":
-                        field_values += f"{games_str} as **egg**.\n"
-                    elif not loc["name"] == "":
-                        field_values += f"{games_str} in **{loc['name']}**.\n"
-                    elif generation == 1:
-                        field_values += f"{games_str} in **Unknown**.\n"
-                        embed.set_footer(text="Please ask Kurt#6024 to add route names to gen 1 location data")
-                if field_values:
-                    embed.add_field(name=f"As {encs['encounterType']}", value=field_values, inline=False)
-            if len(embed.fields) == 0:
-                return await ctx.send(f"Could not find matching encounter data for {pokemon.title()} in Generation {generation.upper()}{' with move(s) ' if len(moves) > 0 else ''}{', '.join([move.title() for move in moves])}.")
-            await ctx.send(embed=embed)
+
+        # async with self.bot.session.post(self.bot.api_url + "api/Encounter", data=data) as resp:
+        #     if resp.status == 400:
+        #     resp_json = await resp.json()
+        encounters = encounters_module.get_encounters(pokemon.capitalize(), generation.upper(), ("|" + "|".join(moves) if not len(moves) == 0 else ""))
+        if encounters == 400:
+            return await ctx.send("Something you sent was invalid. Please double check your data and try again.")
+        elif encounters == 500:
+            return await ctx.send(f"Could not find matching encounter data for {pokemon.title()} in Generation {generation.upper()}{' with move(s) ' if len(moves) > 0 else ''}{', '.join([move.title() for move in moves])}.")
+        embed = discord.Embed(title=f"Encounter Data for {pokemon.title()} in Generation {generation.upper()}{' with move(s) ' if len(moves) > 0 else ''}{', '.join([move.title() for move in moves])}")
+        for encounter in encounters:
+            field_values = ""
+            for location in encounter["location"]:
+                games = (helper.game_dict[x] if x in helper.game_dict.keys() else x for x in location["games"])
+                games_str = ", ".join(games)
+                games_str = games_str.replace("GG", "LGPE")
+                if encounter["encounter_type"] == "Egg":
+                    field_values += f"{games_str} as **egg**.\n"
+                elif not location["name"] == "":
+                    field_values += f"{games_str} in **{location['name']}**.\n"
+                elif generation == 1:
+                    field_values += f"{games_str} in **Unknown**.\n"
+                    embed.set_footer(text="Please ask Kurt#6024 to add route names to gen 1 location data")
+            if field_values:
+                embed.add_field(name=f"As {encounter['encounter_type']}", value=field_values, inline=False)
+        await ctx.send(embed=embed)
 
     @commands.command(name="gpssfetch")
     async def gpss_lookup(self, ctx, code):
