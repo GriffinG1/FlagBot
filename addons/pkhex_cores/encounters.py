@@ -10,15 +10,26 @@ import numpy
 # Import PKHeX stuff
 sys.path.append(os.getcwd() + r"/addons/pkhex_cores/deps")
 clr.AddReference("PKHeX.Core")
-from PKHeX.Core import EncounterLearn, SaveUtil  # Import methods
+from PKHeX.Core import EncounterLearn  # Import methods
 from PKHeX.Core import Species, Move, GameVersion  # Import Enums
 # Import base C# Objects
 from System.Collections.Generic import List
-from System import Enum
+from System.Linq import Enumerable
+from System import Enum, UInt16, Array
 
 
 def t():
-    return get_moves("Beldum", "6", ["Quick Attack", "Tackle", "Flame Burst", "Hidden Power"])
+    mon = "Magmar"
+    gen = "6"
+    moves = [
+        "Quick Attack",
+        "Follow Me",
+        "Tackle",
+        "Flame Burst",
+        "Hidden Power",
+        "Thunderbolt"
+    ]
+    return get_moves(mon, gen, moves)
 
 
 def get_string_from_regex(regex_pattern, data):
@@ -104,25 +115,23 @@ def get_encounters(pokemon, generation, moves: list = None):
 
 
 def get_moves(pokemon, generation, moves: list):
-    for species in Enum.GetNames(Species):
-        if pokemon == species:
-            break
-    else:
+    pokemon_id = [int(item) for item in Enum.GetValues(Species) if Enum.GetName(Species, item) == pokemon]
+    if len(pokemon_id) == 0:
         return 400
+    csharp_pokemon = UInt16(pokemon_id[0])
     learnables = []
     for move in moves:
         formatted_move = move.title().replace(" ", "")
-        for real_move in Enum.GetNames(Move):
-            if formatted_move == real_move:
-                break
-        else:
+        move_id = [int(item) for item in Enum.GetValues(Move) if Enum.GetName(Move, item) == formatted_move]
+        if len(move_id) == 0:
             continue
-        temp_csharp_list = List[str]()
-        temp_csharp_list.Add(formatted_move)
+        temp_csharp_moves_array = Array[UInt16](move_id[0])
+        out = EncounterLearn.Summarize(EncounterLearn.GetLearn(csharp_pokemon, temp_csharp_moves_array))
+        print([x for x in out])
         learnables.append(
             {
                 "name": move.title(),
-                "learnable": EncounterLearn.CanLearn(pokemon, temp_csharp_list)
+                "learnable": any([v for v in EncounterLearn.GetLearn(csharp_pokemon, temp_csharp_moves_array)])
             })
     if len(learnables) == 0:
         return 500
