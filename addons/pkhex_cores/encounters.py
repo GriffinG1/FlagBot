@@ -1,4 +1,5 @@
 # Handling for the following commands: find, learns
+# type: ignore reportMissingImports
 
 import sys
 import os
@@ -6,11 +7,18 @@ import re
 import clr
 import numpy
 
-sys.path.append(os.getcwd() + r"\\addons\\pkhex_cores\\deps")
-clr.AddReference("PKHeX.Core.AutoMod")
-from PKHeX.Core import EncounterLearn, Species  # type: ignore
-from System.Collections.Generic import List  # type: ignore
-from System import Enum  # type: ignore
+# Import PKHeX stuff
+sys.path.append(os.getcwd() + r"/addons/pkhex_cores/deps")
+clr.AddReference("PKHeX.Core")
+from PKHeX.Core import EncounterLearn, SaveUtil  # Import methods
+from PKHeX.Core import Species, Move, GameVersion  # Import Enums
+# Import base C# Objects
+from System.Collections.Generic import List
+from System import Enum
+
+
+def t():
+    return get_moves("Beldum", "6", ["Quick Attack", "Tackle", "Flame Burst", "Hidden Power"])
 
 
 def get_string_from_regex(regex_pattern, data):
@@ -18,6 +26,21 @@ def get_string_from_regex(regex_pattern, data):
     if match:
         return match.group(0)  # Return entire match
     return ""  # Handle failed matches by returning an empty string
+
+
+game_version_dict = {
+    "1": GameVersion.RBY,
+    "2": GameVersion.GSC,
+    "3": GameVersion.RSE,
+    "4": GameVersion.DPPt,
+    "5": GameVersion.B2W2,
+    "6": GameVersion.ORAS,
+    "7": GameVersion.USUM,
+    "8": GameVersion.BDSP,
+    "BDSP": GameVersion.BDSP,
+    "PLA": GameVersion.PLA,
+    "LGPE": GameVersion.GG
+}
 
 
 def get_encounters(pokemon, generation, moves: list = None):
@@ -78,3 +101,29 @@ def get_encounters(pokemon, generation, moves: list = None):
     if len(genlocs) == 0:
         return 500
     return genlocs
+
+
+def get_moves(pokemon, generation, moves: list):
+    for species in Enum.GetNames(Species):
+        if pokemon == species:
+            break
+    else:
+        return 400
+    learnables = []
+    for move in moves:
+        formatted_move = move.title().replace(" ", "")
+        for real_move in Enum.GetNames(Move):
+            if formatted_move == real_move:
+                break
+        else:
+            continue
+        temp_csharp_list = List[str]()
+        temp_csharp_list.Add(formatted_move)
+        learnables.append(
+            {
+                "name": move.title(),
+                "learnable": EncounterLearn.CanLearn(pokemon, temp_csharp_list)
+            })
+    if len(learnables) == 0:
+        return 500
+    return learnables
