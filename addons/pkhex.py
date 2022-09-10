@@ -20,14 +20,9 @@ class pkhex(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.failure_count = 0
-        self.api_check = bot.loop.create_task(self.confirm_api_link())  # loops referenced from https://github.com/chenzw95/porygon/blob/aa2454336230d7bc30a7dd715e057ee51d0e1393/cogs/mod.py#L23
         if bot.is_mongodb:
             self.db = bot.db
         print(f'Addon "{self.__class__.__name__}" loaded')
-
-    def cog_unload(self):
-        self.api_check.cancel()  # need to check on this later
 
     async def ping_api_func(self):
         timeout = aiohttp.ClientTimeout(total=3)
@@ -40,29 +35,6 @@ class pkhex(commands.Cog):
             return 443
         except aiohttp.InvalidURL:
             return 400
-
-    async def confirm_api_link(self):
-        while not self.bot.is_closed():
-            if not self.bot.ready:
-                await asyncio.sleep(30)
-                continue
-            resp = await self.ping_api_func()
-            if not isinstance(resp, aiohttp.ClientResponse):
-                status = resp
-            else:
-                status = resp.status
-            if not status == 200:
-                self.failure_count += 1
-                if self.failure_count == 3:  # Only unload if it fails concurrently 3+ times, to prevent accidental unloads on server restarts
-                    for x in (self.bot.creator, self.bot.allen):
-                        await x.send(f"pkhex.py commands were disabled as API connection was dropped. Status code: `{status}`")
-                    for command in self.get_commands():
-                        if not command.name == "rpc":
-                            command.enabled = False
-                    self.api_check.cancel()
-            else:
-                self.failure_count = 0
-            await asyncio.sleep(300)
 
     async def process_file(self, ctx, data, attachments, url, is_gpss=False, user_id=None):
         if not data and not attachments:
@@ -173,50 +145,6 @@ class pkhex(commands.Cog):
                 val += x + " "
             embed.description += values[0] + val + "\n"
         return embed
-
-    @commands.command(name="rpc")
-    async def reactivate_pkhex_commands(self, ctx):
-        """Reactivates the pkhex commands. Restricted to bot creator and Allen"""
-        if ctx.author not in (self.bot.creator, self.bot.allen):
-            raise commands.errors.CheckFailure()
-        resp = await self.ping_api_func()
-        if not isinstance(resp, aiohttp.ClientResponse):
-            status = resp
-        else:
-            status = resp.status
-        if not status == 200:
-            return await ctx.send(f"Cancelled the command reactivation; status code from FlagBrew server is `{status}`.")
-        for command in self.get_commands():
-            if command.enabled is True:
-                await ctx.send(f"Cancelled the command reactivation for `{command.name}`; command already enabled.")
-                continue
-            command.enabled = True
-        self.api_check = self.bot.loop.create_task(self.confirm_api_link())
-        return await ctx.send("Successfully reactivated the pkhex commands.")
-
-    @commands.command(hidden=True, aliases=["pingapi"])
-    async def ping_api(self, ctx):
-        """Pings the CoreAPI server"""
-        if ctx.author not in (self.bot.creator, self.bot.allen):
-            raise commands.errors.CheckFailure()
-        msgtime = ctx.message.created_at
-        resp = await self.ping_api_func()
-        if not isinstance(resp, aiohttp.ClientResponse):
-            return await ctx.send(f"Current CoreAPI status code is {resp}.")
-        now = discord.utils.utcnow()
-        ping = now - msgtime
-        embed = discord.Embed()
-        embed.add_field(name="CoreAPI Response Time", value=f"{str(ping.microseconds / 1000.0)} milliseconds.")
-        embed.add_field(name="CoreAPI Status Code", value=resp.status)
-        if resp.status == 200:
-            embed.colour = discord.Colour.green()
-            embed.add_field(name="CoreAPI PKHeX.Core Version", value=resp.headers["X-PKHeX-Version"], inline=False)
-            embed.add_field(name="CoreAPI AutoMod.Core Version", value=resp.headers["X-ALM-Version"])
-        else:
-            embed.colour = discord.Colour.red()
-            embed.add_field(name="CoreAPI PKHeX.Core Version", value="N/A", inline=False)
-            embed.add_field(name="CoreAPI AutoMod.Core Version", value="N/A")
-        await ctx.send(embed=embed)
 
     @commands.command(name='legality', aliases=['illegal'])
     async def check_legality(self, ctx, *, data=""):
@@ -618,7 +546,7 @@ class pkhex(commands.Cog):
         embed.colour = discord.Colour.green() if resp_json["illegal_reasons"] == "Legal!" else discord.Colour.red()
         await ctx.send(embed=embed)
 
-    @commands.command(name='genqr')
+    @commands.command(name='genqr')  # Todo: move to utility.py
     @commands.has_any_role("Patrons", "FlagBrew Team")
     async def generate_qr(self, ctx, app, ext):
         """Generates a Patron QR code for installing via FBI"""
