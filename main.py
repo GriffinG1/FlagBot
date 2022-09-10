@@ -450,11 +450,23 @@ async def about(ctx):
     embed.description = ("Python bot utilizing [discord.py](https://github.com/Rapptz/discord.py) for use in the FlagBrew server.\n"
                          "You can view the source code [here](https://github.com/GriffinG1/FlagBot).\n"
                          f"Written by {bot.creator.mention}.")
+    embed.add_field(name="PKHeX.Core Commit", value=f"`{bot.persistent_vars_dict['pkhex_core_commit']}`")
+    embed.add_field(name="AutoMod.Core Commit", value=f"`{bot.persistent_vars_dict['alm_core_commit']}`")
     embed.set_author(name="GriffinG1", url='https://github.com/GriffinG1', icon_url='https://avatars0.githubusercontent.com/u/28538707')
     total_mem = psutil.virtual_memory().total / float(1 << 30)
     used_mem = psutil.Process().memory_info().rss / float(1 << 20)
     embed.set_footer(text=f"{round(used_mem, 2)} MB used out of {round(total_mem, 2)} GB")
     await ctx.send(embed=embed)
+
+
+@bot.command(name='uccv', hidden=True)
+async def update_core_commit_vars(ctx, pkhex_core_commit, alm_core_commit):
+    """Changes PKHeX and ALM core commit values in persistent_vars to provided"""
+    bot.persistent_vars_dict["pkhex_core_commit"] = pkhex_core_commit
+    bot.persistent_vars_dict["alm_core_commit"] = alm_core_commit
+    with open('saves/persistent_vars.json', 'w') as file:
+        json.dump(bot.persistent_vars_dict, file, indent=4)
+    await ctx.send(f"Updated saved commit values to `{pkhex_core_commit}` and `{alm_core_commit}`!")
 
 
 # Execute
