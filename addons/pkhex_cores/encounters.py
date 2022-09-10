@@ -13,20 +13,16 @@ clr.AddReference("PKHeX.Core")
 from PKHeX.Core import EncounterLearn  # Import methods
 from PKHeX.Core import Species, Move, GameVersion  # Import Enums
 # Import base C# Objects
-from System.Collections.Generic import List
-from System.Linq import Enumerable
-from System import Enum, UInt16, Array
+from System import Enum, UInt16
 
 
 def t():
     mon = "Pikachu"
     moves = [
-        "Follow Me",
-        "Tackle",
         "Thunderbolt",
         "Hidden Power"
     ]
-    return get_moves(mon, moves)
+    return get_encounters(mon, "6", moves)
 
 
 def get_string_from_regex(regex_pattern, data):
@@ -51,19 +47,20 @@ game_version_dict = {
 }
 
 
-def get_encounters(pokemon, generation, moves: list = None):
-    for species in Enum.GetNames(Species):
-        if pokemon == species:
-            break
-    else:
+def get_encounters(pokemon, generation: str, moves: list = None):
+    pokemon_id = [int(item) for item in Enum.GetValues(Species) if Enum.GetName(Species, item) == pokemon]
+    if len(pokemon_id) == 0:
         return 400
+    csharp_pokemon = UInt16(pokemon_id[0])
     special = generation if generation in ("LGPE", "BDSP", "PLA") else None
     gen = "7" if generation == "LGPE" else "8" if generation in ("BDSP", "PLA") else generation
-    moves_csharp_list = List[str]()
+    csharp_moves_list = []
     if moves:
         for move in moves:
-            moves_csharp_list.Add(move)
-    encounters = EncounterLearn.GetLearnSummary(pokemon, moves_csharp_list)
+            formatted_move = move.title().replace(" ", "")
+            move_id = [int(item) for item in Enum.GetValues(Move) if Enum.GetName(Move, item) == formatted_move]
+            csharp_moves_list.append(move_id[0])
+    encounters = EncounterLearn.Summarize(EncounterLearn.GetLearn(csharp_pokemon, csharp_moves_list))
     encounter_type = ""
     genlocs = []
     locations = []
