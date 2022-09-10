@@ -16,25 +16,13 @@ from discord.ext import commands
 
 class pkhex(commands.Cog):
 
-    """Handles all the PKHeX Related Commands. Does not load if api_url is not defined in config"""
+    """Handles all the PKHeX and ALM Core related commands. Does not load if api_url is not defined in config"""
 
     def __init__(self, bot):
         self.bot = bot
         print(f'Addon "{self.__class__.__name__}" loaded')
 
-    async def ping_api_func(self):
-        timeout = aiohttp.ClientTimeout(total=3)
-        try:
-            async with self.bot.session.get(self.bot.api_url + "api/ping", timeout=timeout) as resp:
-                return resp
-        except asyncio.exceptions.TimeoutError:
-            return 408
-        except aiohttp.ClientConnectorError:
-            return 443
-        except aiohttp.InvalidURL:
-            return 400
-
-    async def process_file(self, ctx, data, attachments, url, is_gpss=False, user_id=None):
+    async def process_file(self, ctx, data, attachments, url):
         if not data and not attachments:
             await ctx.send("Error: No data was provided and no pkx file was attached.")
             return 400
@@ -63,16 +51,13 @@ class pkhex(commands.Cog):
             except aiohttp.InvalidURL:
                 await ctx.send("The provided data was not valid.")
                 return 400
-        if not is_gpss:
-            url = self.bot.api_url + url
-        else:
-            url = self.bot.flagbrew_url + url
+        url = self.bot.api_url + url
         files = {'pkmn': file}
         if user_id is None:
             user_id = ""
         headers = {'discord-user': str(user_id), 'secret': self.bot.site_secret, 'source': "FlagBot"}
         async with self.bot.session.post(url=url, data=files, headers=headers) as resp:
-            if not is_gpss and (resp.status == 400 or resp.status == 413):
+            if resp.status == 400 or resp.status == 413:
                 await ctx.send("The provided file was invalid.")
                 return 400
             try:
@@ -88,7 +73,7 @@ class pkhex(commands.Cog):
                 return 400
             return [resp.status, resp_json, content]
 
-    def embed_fields(self, ctx, embed, data, is_set=False, is_gpss=False):
+    def embed_fields(self, embed, data, is_set=False):
         embed.add_field(name="Species", value=data["species"])
         embed.add_field(name="Level", value=data["level"])
         embed.add_field(name="Nature", value=data["nature"])
@@ -123,13 +108,8 @@ class pkhex(commands.Cog):
             embed.add_field(name="Held Item", value=data["held_item"])
         if is_set:
             embed.add_field(name=u"\u200B", value=u"\u200B", inline=False)
-        if not is_gpss:
-            embed.add_field(name="EVs", value=f"**HP**: {data['hp_ev']}\n**Atk**: {data['atk_ev']}\n**Def**: {data['def_ev']}\n**SpAtk**: {data['spa_ev']}\n**SpDef**: {data['spd_ev']}\n**Spd**: {data['spe_ev']}")
-            embed.add_field(name="IVs", value=f"**HP**: {data['hp_iv']}\n**Atk**: {data['atk_iv']}\n**Def**: {data['def_iv']}\n**SpAtk**: {data['spa_iv']}\n**SpDef**: {data['spd_iv']}\n**Spd**: {data['spe_iv']}")
-        else:
-            stats = data['stats']
-            embed.add_field(name="EVs", value=f"**HP**: {stats[0]['stat_ev']}\n**Atk**: {stats[1]['stat_ev']}\n**Def**: {stats[2]['stat_ev']}\n**SpAtk**: {stats[3]['stat_ev']}\n**SpDef**: {stats[4]['stat_ev']}\n**Spd**: {stats[5]['stat_ev']}")
-            embed.add_field(name="IVs", value=f"**HP**: {stats[0]['stat_iv']}\n**Atk**: {stats[1]['stat_iv']}\n**Def**: {stats[2]['stat_iv']}\n**SpAtk**: {stats[3]['stat_iv']}\n**SpDef**: {stats[4]['stat_iv']}\n**Spd**: {stats[5]['stat_iv']}")
+        embed.add_field(name="EVs", value=f"**HP**: {data['hp_ev']}\n**Atk**: {data['atk_ev']}\n**Def**: {data['def_ev']}\n**SpAtk**: {data['spa_ev']}\n**SpDef**: {data['spd_ev']}\n**Spd**: {data['spe_ev']}")
+        embed.add_field(name="IVs", value=f"**HP**: {data['hp_iv']}\n**Atk**: {data['atk_iv']}\n**Def**: {data['def_iv']}\n**SpAtk**: {data['spa_iv']}\n**SpDef**: {data['spd_iv']}\n**Spd**: {data['spe_iv']}")
         moves = data["moves"]
         embed.add_field(name="Moves", value=f"**1**: {moves[0]['move_name']}\n**2**: {moves[1]['move_name']}\n**3**: {moves[2]['move_name']}\n**4**: {moves[3]['move_name']}")
         return embed
@@ -144,7 +124,7 @@ class pkhex(commands.Cog):
             embed.description += values[0] + val + "\n"
         return embed
 
-    @commands.command(name='legality', aliases=['illegal'])
+    @commands.command(name='legality', aliases=['illegal'], enabled=False)
     async def check_legality(self, ctx, *, data=""):
         """Checks the legality of either a provided URL or attached pkx file. URL *must* be a direct download link"""
         if not data and not ctx.message.attachments:
@@ -163,7 +143,7 @@ class pkhex(commands.Cog):
         embed = self.list_to_embed(embed, reasons)
         await ctx.send(embed=embed)
 
-    @commands.command(name='forms')
+    @commands.command(name='forms', enabled=False)
     async def check_forms(self, ctx, species):
         """Returns a list of a given Pokemon's forms."""
         ping = await self.ping_api_func()
@@ -181,7 +161,7 @@ class pkhex(commands.Cog):
                 return await ctx.send(f"No forms available for `{species.title()}`.")
             await ctx.send(f"Available forms for {species.title()}: `{'`, `'.join(resp_json)}`.")
 
-    @commands.command(name='pokeinfo', aliases=['pi'])
+    @commands.command(name='pokeinfo', aliases=['pi'], enabled=False)
     @restricted_to_bot
     async def poke_info(self, ctx, data="", generation=None, shiny="normal"):
         ("""Returns an embed with a Pokemon's nickname, species, and a few others. Takes a provided URL or attached pkx file. URL *must* be a direct download link.\n"""
@@ -290,7 +270,7 @@ class pkhex(commands.Cog):
             return
         resp_json = resp[1]
         embed = discord.Embed()
-        embed = self.embed_fields(ctx, embed, resp_json)
+        embed = self.embed_fields(embed, resp_json)
         if embed == 400:
             return await ctx.send(f"{ctx.author.mention} Something in that pokemon is *very* wrong. Your request has been canceled. Please do not try that mon again.")
         embed.set_author(name=f"Data for {resp_json['nickname']} ({resp_json['gender']})", icon_url=resp_json["species_sprite_url"])
@@ -300,7 +280,7 @@ class pkhex(commands.Cog):
         except Exception as exception:
             return await ctx.send(f"There was an error showing the data for this pokemon. {self.bot.creator.mention}, {self.bot.pie.mention}, or {self.bot.allen.mention} please check this out!\n{ctx.author.mention} please do not delete the file. Exception below.\n\n```{exception}```")
 
-    @commands.command(name='qr')
+    @commands.command(name='qr', enabled=False)
     @restricted_to_bot
     async def gen_pkmn_qr(self, ctx, data=""):
         """Gens a QR code that PKSM can read. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
@@ -373,85 +353,7 @@ class pkhex(commands.Cog):
                 embed.add_field(name=f"As {encounter['encounter_type']}", value=field_values, inline=False)
         await ctx.send(embed=embed)
 
-    @commands.command(name="gpssfetch")
-    async def gpss_lookup(self, ctx, code):
-        """Looks up a pokemon from the GPSS using its download code"""
-        if not code.isdigit():
-            return await ctx.send("GPSS codes are solely comprised of numbers. Please try again.")
-        async with self.bot.session.get(self.bot.flagbrew_url) as resp:
-            if not resp.status == 200:
-                return await ctx.send("I could not make a connection to flagbrew.org, so this command cannot be used currently.")
-        upload_channel = await self.bot.fetch_channel(664548059253964847)  # Points to #legalize-log on FlagBrew
-        msg = await ctx.send("Attempting to fetch pokemon...")
-        try:
-            async with self.bot.session.get(self.bot.flagbrew_url + "api/v2/gpss/view/" + code) as resp:
-                resp_json = await resp.json()
-                code_data = resp_json["pokemon"]
-                pkmn_data = code_data["pokemon"]
-                filename = pkmn_data["species"] + f" Code_{code}"
-                if pkmn_data["generation"] == "LGPE":
-                    filename += ".pb7"
-                elif pkmn_data["generation"] == "BDSP":
-                    filename += ".pb8"
-                elif pkmn_data["generation"] == "PLA":
-                    filename += ".pa8"
-                else:
-                    filename += ".pk" + pkmn_data["generation"]
-                pk64 = code_data["base_64"].encode("ascii")
-                pkx = base64.decodebytes(pk64)
-                pkmn_file = discord.File(io.BytesIO(pkx), filename)
-                await asyncio.sleep(1)
-                log_msg = await upload_channel.send(f"Pokemon fetched from the GPSS by {ctx.author}", file=pkmn_file)
-                embed = discord.Embed(description=f"[GPSS Page]({self.bot.gpss_url + 'gpss/' + code}) | [Download link]({log_msg.attachments[0].url})")
-                embed = self.embed_fields(ctx, embed, pkmn_data, False, True)
-                if embed == 400:
-                    return await ctx.send(f"Something in that pokemon is *very* wrong. Please do not try to check that code again.\n\n{self.bot.pie.mention}: Mon was gen3+ and missing origin game. Code: `{code}`")
-                embed.set_author(icon_url=pkmn_data["species_sprite_url"], name=f"Data for {pkmn_data['nickname']} ({pkmn_data['gender']})")
-                embed.set_thumbnail(url=self.bot.gpss_url + f"gpss/qr/{code}")
-                return await msg.edit(embed=embed, content=None)
-        except aiohttp.ContentTypeError:
-            await msg.edit(content=f"There was no pokemon on the GPSS with the code `{code}`.")
-
-    @commands.command(name="gpsspost", aliases=['gpssupload'])
-    @restricted_to_bot
-    async def gpss_upload(self, ctx, data=""):
-        """Allows uploading a pokemon to the GPSS. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
-        if self.bot.gpss_banned_role in ctx.author.roles:
-            raise commands.errors.CheckFailure()
-            return
-        if not data and not ctx.message.attachments:
-            raise PKHeXMissingArgs()
-        async with self.bot.session.get(self.bot.flagbrew_url) as resp:
-            if not resp.status == 200:
-                return await ctx.send("I could not make a connection to flagbrew.org, so this command cannot be used currently.")
-        resp = await self.process_file(ctx, data, ctx.message.attachments, "api/v2/gpss/upload/pokemon", True, str(ctx.author.id))
-        if resp == 400:
-            return
-        resp_json = resp[1]
-        try:
-            code = resp_json['code']
-            uploaded = resp_json['uploaded']
-            approved = resp_json['approved']
-        except KeyError as e:
-            if not e.args[0] == "approved":
-                return await ctx.send(f"JSON content was empty on the response.\nStatus: {resp[0]}\nContent: {resp[2]}")
-            approved = True
-        if resp[0] == 503:
-            return await ctx.send("GPSS uploading is currently disabled. Please try again later.")
-        elif not uploaded:
-            error = resp_json['error']
-            if error == "Failed to get pkmn info from CoreAPI, error details: There is an error in your provided information!":
-                return await ctx.send("That file is either not a pokemon, or something went wrong.")
-            elif error == "Your Pokemon is already uploaded":
-                return await ctx.send(f"The provided pokemon has already been uploaded. You can find it at: {self.bot.gpss_url}gpss/{code}")
-            else:
-                await ctx.send(f"There seems to have been an issue getting the code for this upload. Please check <#586728153985056801> to confirm upload. If it didn't upload, try again later. {self.bot.creator.mention} and {self.bot.allen.mention} please investigate!")
-                return await self.bot.err_logs_channel.send(f"Error processing GPSS upload in {ctx.channel.mention}. Code length greater than 10. Code: `{code}`")
-        elif not approved:
-            return await ctx.send(f"Your pokemon has been uploaded, but currently is waiting on approval. If it is approved, you can find it at: {self.bot.gpss_url}gpss/{code}")
-        await ctx.send(f"Your pokemon has been uploaded! You can find it at: {self.bot.gpss_url}gpss/{code}")
-
-    @commands.command()
+    @commands.command(enabled=False)
     @commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
     async def legalize(self, ctx, data=""):
         """Legalizes a pokemon as much as possible. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
@@ -489,7 +391,7 @@ class pkhex(commands.Cog):
         await msg.delete()
         await ctx.send(embed=embed, file=qr)
 
-    @commands.command(enabled=True)
+    @commands.command(enabled=False)
     @commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
     @restricted_to_bot
     async def convert(self, ctx, generation: str, *, showdown_set):
@@ -526,7 +428,7 @@ class pkhex(commands.Cog):
             qr = base64.decodebytes(qr64)
         embed = discord.Embed(title=f"Data for {resp_json['nickname']} ({resp_json['gender']})")
         embed.set_thumbnail(url=resp_json["species_sprite_url"])
-        embed = self.embed_fields(ctx, embed, resp_json, is_set=True)
+        embed = self.embed_fields(embed, resp_json, is_set=True)
         file_extension = (".pb7" if generation.lower() == "lgpe" else ".pb8" if generation.lower() == "bdsp" else ".pa8" if generation.lower() == "pla" else ".pk" + generation)
         pokemon_file = discord.File(io.BytesIO(pkx), "showdownset" + file_extension)
         qr_file = discord.File(io.BytesIO(qr), "qrcode.png")

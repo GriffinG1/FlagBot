@@ -321,6 +321,7 @@ async def on_ready():
 # loads extensions
 cogs = [
     'addons.events',
+    'addons.gpss'
     'addons.info',
     'addons.meta',
     'addons.mod',
@@ -382,6 +383,7 @@ async def reload(ctx):
     addon_dict = {
         "DevTools": "devtools",  # not loaded by default...
         "Events": "events",
+        "gpss": "gpss",
         "Info": "info",
         "Meta": "meta",
         "Moderation": "mod",
