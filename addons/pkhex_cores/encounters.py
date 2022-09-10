@@ -16,15 +16,6 @@ from PKHeX.Core import Species, Move, GameVersion  # Import Enums
 from System import Enum, UInt16
 
 
-def t():
-    mon = "Pikachu"
-    moves = [
-        "Thunderbolt",
-        "Hidden Power"
-    ]
-    return get_encounters(mon, "6", moves)
-
-
 def get_string_from_regex(regex_pattern, data):
     match = re.search(regex_pattern, data)
     if match:

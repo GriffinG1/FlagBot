@@ -320,12 +320,11 @@ class pkhex(commands.Cog):
         await ctx.send(f"QR containing a {resp['species']} for Generation {resp['generation']}", file=qr)
 
     @commands.command(name='learns', aliases=['learn'])
-    async def check_moves(self, ctx, *, input_data):
-        """Checks if a given pokemon can learn provided moves. Separate moves using pipes. Example: .learns pikachu | quick attack | hail"""
-        input_data = input_data.replace("| ", "|").replace(" |", "|").replace(" | ", "|")
-        input_data = input_data.split("|")
-        pokemon = input_data[0]
-        moves = input_data[1:]
+    async def check_moves(self, ctx, pokemon, *, moves):
+        """Checks if a given pokemon can learn provided moves. Separate move data using pipes.
+        Example: .learns pikachu | quick attack | hail"""
+        moves = moves.replace("| ", "|").replace(" |", "|").replace(" | ", "|")
+        moves = moves.split("|")
         if not moves:
             return await ctx.send("No moves provided, or the data provided was in an incorrect format.\n```Example: .learns pikachu | quick attack | hail```")
         learnables = encounters_module.get_moves(pokemon.capitalize(), moves)
@@ -339,8 +338,9 @@ class pkhex(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name='find')
-    async def check_encounters(self, ctx, generation: str, *, input_data):
-        """Outputs the locations a given pokemon can be found. Separate data using pipes. Example: .find 6 pikachu | volt tackle"""
+    async def check_encounters(self, ctx, generation: str, pokemon, *, moves: str = None):
+        """Outputs the locations a given pokemon can be found, possibly with provided moves. Separate move data using pipes. Provided moves must be legal, can be checked with .learns
+            Example: .find 6 pikachu | volt tackle"""
         try:
             int(generation)
         except ValueError:
@@ -349,16 +349,15 @@ class pkhex(commands.Cog):
         else:
             if int(generation) not in range(1, 9):
                 return await ctx.send(f"There is no generation {generation}.")
-        input_data = input_data.replace("| ", "|").replace(" |", "|").replace(" | ", "|")
-        input_data = input_data.split("|")
-        pokemon = input_data[0]
-        moves = input_data[1:]
-        encounters = encounters_module.get_encounters(pokemon.capitalize(), generation.upper(), (moves if not len(moves) == 0 else None))
+        if moves:
+            moves = moves.replace("| ", "|").replace(" |", "|").replace(" | ", "|")
+            moves = moves.split("|")
+        encounters = encounters_module.get_encounters(pokemon.capitalize(), generation.upper(), moves)
         if encounters == 400:
             return await ctx.send("Something you sent was invalid. Please double check your data and try again.")
         elif encounters == 500:
-            return await ctx.send(f"Could not find matching encounter data for {pokemon.title()} in Generation {generation.upper()}{' with move(s) ' if len(moves) > 0 else ''}{', '.join([move.title() for move in moves])}.")
-        embed = discord.Embed(title=f"Encounter Data for {pokemon.title()} in Generation {generation.upper()}{' with move(s) ' if len(moves) > 0 else ''}{', '.join([move.title() for move in moves])}")
+            return await ctx.send(f"Could not find matching encounter data for {pokemon.title()} in Generation {generation.upper()}{' with move(s) ' if moves else ''}{', '.join([move.title() for move in moves]) if moves else ''}.")
+        embed = discord.Embed(title=f"Encounter Data for {pokemon.title()} in Generation {generation.upper()}{' with move(s) ' if moves else ''}{', '.join([move.title() for move in moves]) if moves else ''}")
         for encounter in encounters:
             field_values = ""
             for location in encounter["location"]:
