@@ -10,6 +10,7 @@ import inspect
 from exceptions import PKHeXMissingArgs
 import addons.helper as helper
 import addons.pkhex_cores.encounters as encounters_module
+import addons.pkhex_cores.pokeinfo as pokeinfo_module
 from addons.helper import restricted_to_bot
 from discord.ext import commands
 
@@ -143,23 +144,15 @@ class pkhex(commands.Cog):
         embed = self.list_to_embed(embed, reasons)
         await ctx.send(embed=embed)
 
-    @commands.command(name='forms', enabled=False)
-    async def check_forms(self, ctx, species):
+    @commands.command(name='forms')
+    async def check_forms(self, ctx, pokemon):
         """Returns a list of a given Pokemon's forms."""
-        ping = await self.ping_api_func()
-        if not isinstance(ping, aiohttp.ClientResponse) or not ping.status == 200:
-            return await ctx.send("The CoreAPI server is currently down, and as such no commands in the PKHeX module can be used.")
-        url = self.bot.api_url + "api/PokemonForms"
-        data = {
-            "pokemon": species.lower()
-        }
-        async with self.bot.session.post(url=url, data=data) as resp:
-            if not resp.status == 200:
-                return await ctx.send("Are you sure that's a real pokemon?")
-            resp_json = await resp.json()
-            if resp_json[0] == "":
-                return await ctx.send(f"No forms available for `{species.title()}`.")
-            await ctx.send(f"Available forms for {species.title()}: `{'`, `'.join(resp_json)}`.")
+        forms = pokeinfo_module.get_pokemon_forms(pokemon.capitalize())
+        if forms == 400:
+            return await ctx.send("Are you sure that's a real pokemon?")
+        elif len(forms) == 0:
+            return await ctx.send(f"No forms available for `{pokemon.capitalize()}`.")
+        await ctx.send(f"Available forms for {pokemon.capitalize()}: `{'`, `'.join(forms)}`.")
 
     @commands.command(name='pokeinfo', aliases=['pi'], enabled=False)
     @restricted_to_bot

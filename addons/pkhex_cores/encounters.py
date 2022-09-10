@@ -10,8 +10,8 @@ import numpy
 # Import PKHeX stuff
 sys.path.append(os.getcwd() + r"/addons/pkhex_cores/deps")
 clr.AddReference("PKHeX.Core")
-from PKHeX.Core import EncounterLearn  # Import methods
-from PKHeX.Core import Species, Move, GameVersion  # Import Enums
+from PKHeX.Core import EncounterLearn  # Import classes
+from PKHeX.Core import Species, Move  # Import Enums
 # Import base C# Objects
 from System import Enum, UInt16
 
@@ -21,21 +21,6 @@ def get_string_from_regex(regex_pattern, data):
     if match:
         return match.group(0)  # Return entire match
     return ""  # Handle failed matches by returning an empty string
-
-
-game_version_dict = {
-    "1": GameVersion.RBY,
-    "2": GameVersion.GSC,
-    "3": GameVersion.RSE,
-    "4": GameVersion.DPPt,
-    "5": GameVersion.B2W2,
-    "6": GameVersion.ORAS,
-    "7": GameVersion.USUM,
-    "8": GameVersion.BDSP,
-    "BDSP": GameVersion.BDSP,
-    "PLA": GameVersion.PLA,
-    "LGPE": GameVersion.GG
-}
 
 
 def get_encounters(pokemon, generation: str, moves: list = None):
