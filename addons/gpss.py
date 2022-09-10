@@ -78,12 +78,13 @@ class gpss(commands.Cog):
                 embed.add_field(name="Captured In", value=pkmn_data["ball"])
                 if pkmn_data["held_item"] != "(None)":
                     embed.add_field(name="Held Item", value=pkmn_data["held_item"])
-                embed.add_field(name="EVs", value=f"**HP**: {pkmn_data['hp_ev']}\n**Atk**: {pkmn_data['atk_ev']}\n**Def**: {pkmn_data['def_ev']}\n**SpAtk**: {pkmn_data['spa_ev']}\n**SpDef**: {pkmn_data['spd_ev']}\n**Spd**: {pkmn_data['spe_ev']}")
-                embed.add_field(name="IVs", value=f"**HP**: {pkmn_data['hp_iv']}\n**Atk**: {pkmn_data['atk_iv']}\n**Def**: {pkmn_data['def_iv']}\n**SpAtk**: {pkmn_data['spa_iv']}\n**SpDef**: {pkmn_data['spd_iv']}\n**Spd**: {pkmn_data['spe_iv']}")
+                stats = pkmn_data["stats"]
+                embed.add_field(name="EVs", value=f"**HP**: {stats[0]['stat_ev']}\n**Atk**: {stats[1]['stat_ev']}\n**Def**: {stats[2]['stat_ev']}\n**SpAtk**: {stats[3]['stat_ev']}\n**SpDef**: {stats[4]['stat_ev']}\n**Spd**: {stats[5]['stat_ev']}")
+                embed.add_field(name="IVs", value=f"**HP**: {stats[0]['stat_iv']}\n**Atk**: {stats[1]['stat_iv']}\n**Def**: {stats[2]['stat_iv']}\n**SpAtk**: {stats[3]['stat_iv']}\n**SpDef**: {stats[4]['stat_iv']}\n**Spd**: {stats[5]['stat_iv']}")
                 moves = pkmn_data["moves"]
                 embed.add_field(name="Moves", value=f"**1**: {moves[0]['move_name']}\n**2**: {moves[1]['move_name']}\n**3**: {moves[2]['move_name']}\n**4**: {moves[3]['move_name']}")
-                embed.set_author(icon_url=pkmn_data["species_sprite_url"], name=f"Data for {pkmn_data['nickname']} ({pkmn_data['gender']})")
-                embed.set_thumbnail(url=self.bot.gpss_url + f"gpss/qr/{code}")
+                embed.title = f"Data for {pkmn_data['nickname']} ({pkmn_data['gender']})"
+                embed.set_thumbnail(url=pkmn_data["species_sprite_url"])
                 return await msg.edit(embed=embed, content=None)
         except aiohttp.ContentTypeError:
             await msg.edit(content=f"There was no pokemon on the GPSS with the code `{code}`.")
@@ -127,10 +128,10 @@ class gpss(commands.Cog):
                 return
         url = self.bot.flagbrew_url + "api/v2/gpss/upload/pokemon"
         files = {'pkmn': file}
-        if user_id is None:
-            user_id = ""
-        headers = {'discord-user': str(user_id), 'secret': self.bot.site_secret, 'source': "FlagBot"}
+        headers = {'discord-user': str(ctx.author.id), 'secret': self.bot.site_secret, 'source': "FlagBot"}
         async with self.bot.session.post(url=url, data=files, headers=headers) as resp:
+            if resp.status == 503:
+                return await ctx.send("GPSS uploading is currently disabled. Please try again later.")
             try:
                 resp_json = await resp.json()
             except aiohttp.client_exceptions.ContentTypeError:
@@ -142,17 +143,15 @@ class gpss(commands.Cog):
                 await ctx.send(f"Couldn't get response content. {self.bot.creator.mention} and {self.bot.allen.mention} please investigate!")
                 await ctx.send(content)
                 return
-        try:
-            code = resp_json['code']
-            uploaded = resp_json['uploaded']
-            approved = resp_json['approved']
-        except KeyError as e:
-            if not e.args[0] == "approved":
-                return await ctx.send(f"JSON content was empty on the response.\nStatus: {resp[0]}\nContent: {resp[2]}")
-            approved = True
-        if resp[0] == 503:
-            return await ctx.send("GPSS uploading is currently disabled. Please try again later.")
-        elif not uploaded:
+            try:
+                code = resp_json['code']
+                uploaded = resp_json['uploaded']
+                approved = resp_json['approved']
+            except KeyError as e:
+                if not e.args[0] == "approved":
+                    return await ctx.send(f"JSON content was empty on the response.\nStatus: {resp[0]}\nContent: {resp.status}")
+                approved = True
+        if not uploaded:
             error = resp_json['error']
             if error == "Failed to get pkmn info from CoreAPI, error details: There is an error in your provided information!":
                 return await ctx.send("That file is either not a pokemon, or something went wrong.")

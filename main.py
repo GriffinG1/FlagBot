@@ -321,7 +321,7 @@ async def on_ready():
 # loads extensions
 cogs = [
     'addons.events',
-    'addons.gpss'
+    'addons.gpss',
     'addons.info',
     'addons.meta',
     'addons.mod',
