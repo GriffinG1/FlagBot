@@ -19,17 +19,14 @@ from System import Enum, UInt16, Array
 
 
 def t():
-    mon = "Magmar"
-    gen = "6"
+    mon = "Pikachu"
     moves = [
-        "Quick Attack",
         "Follow Me",
         "Tackle",
-        "Flame Burst",
-        "Hidden Power",
-        "Thunderbolt"
+        "Thunderbolt",
+        "Hidden Power"
     ]
-    return get_moves(mon, gen, moves)
+    return get_moves(mon, moves)
 
 
 def get_string_from_regex(regex_pattern, data):
@@ -125,13 +122,13 @@ def get_moves(pokemon, moves: list):
         move_id = [int(item) for item in Enum.GetValues(Move) if Enum.GetName(Move, item) == formatted_move]
         if len(move_id) == 0:
             continue
-        temp_csharp_moves_array = Array[UInt16](move_id[0])
-        out = EncounterLearn.Summarize(EncounterLearn.GetLearn(csharp_pokemon, temp_csharp_moves_array))
-        print([x for x in out])
+        csharp_move_in_array = [move_id[0]]
+        summary = EncounterLearn.Summarize(EncounterLearn.GetLearn(csharp_pokemon, csharp_move_in_array))
+        can_learn = len([item for item in summary]) > 0
         learnables.append(
             {
                 "name": move.title(),
-                "learnable": any([v for v in EncounterLearn.GetLearn(csharp_pokemon, temp_csharp_moves_array)])
+                "learnable": can_learn
             })
     if len(learnables) == 0:
         return 500
