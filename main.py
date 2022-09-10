@@ -88,14 +88,13 @@ bot = commands.Bot(command_prefix=prefix, description=description, activity=defa
 
 if not is_using_cmd_args:  # handles setting up the bot vars
     bot.is_mongodb = config.is_mongodb
-    bot.api_url = config.api_url
     bot.flagbrew_url = config.flagbrew_url
     bot.star_count = config.star_count
 elif not is_using_env_args:
-    bot.is_mongodb, bot.api_url, bot.flagbrew_url = cmd_args[3:6]
+    bot.is_mongodb = cmd_args[7]
+    bot.flagbrew_url = cmd_args[11]
 else:
     bot.is_mongodb = os.getenv("IS_MONGODB")
-    bot.api_url = os.getenv("API_URL")
     bot.flagbrew_url = os.getenv("FLAGBREW_URL")
     bot.star_count = os.getenv("STAR_COUNT")
 bot.gpss_url = bot.flagbrew_url
@@ -136,7 +135,9 @@ if bot.is_mongodb:
         db_username = config.db_username
         db_password = config.db_password
     elif not is_using_env_args:
-        db_address = cmd_args[6]
+        db_address = cmd_args[8]
+        db_username = cmd_args[9]
+        db_password = cmd_args[10]
     else:
         db_address = os.getenv("DB_ADDRESS")
         db_username = os.getenv("DB_USERNAME")
@@ -170,8 +171,10 @@ if not is_using_cmd_args:
     bot.ready = False
     bot.is_beta = config.is_beta
 elif not is_using_env_args:
-    bot.site_secret, bot.github_user, bot.github_pass, bot.is_beta = cmd_args[7:11]
-    bot.star_count = cmd_args[11]
+    bot.site_secret = cmd_args[3]
+    bot.github_user, bot.github_pass = cmd_args[5:7]
+    bot.is_beta = cmd_args[4]
+    bot.star_count = cmd_args[12]
     bot.ready = False
 else:
     bot.site_secret = os.getenv("SECRET")
