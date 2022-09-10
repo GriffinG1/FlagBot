@@ -394,9 +394,6 @@ class pkhex(commands.Cog):
     @commands.command(name='learns', aliases=['learn'])
     async def check_moves(self, ctx, generation: str, *, input_data):
         """Checks if a given pokemon can learn moves. Separate moves using pipes. Example: .learns 8 pikachu | quick attack | hail"""
-        ping = await self.ping_api_func()
-        if not isinstance(ping, aiohttp.ClientResponse) or not ping.status == 200:
-            return await ctx.send("The CoreAPI server is currently down, and as such no commands in the PKHeX module can be used.")
         try:
             int(generation)
         except ValueError:
@@ -411,18 +408,15 @@ class pkhex(commands.Cog):
         moves = input_data[1:]
         if not moves:
             return await ctx.send("No moves provided, or the data provided was in an incorrect format.\n```Example: .learns pikachu | quick attack | hail```")
-        data = {
-            "query": pokemon + "|" + "|".join(moves),
-            "generation": generation.upper()
-        }
-        async with self.bot.session.post(self.bot.api_url + "api/bot/moves", data=data) as resp:
-            if resp.status == 400:
-                return await ctx.send("Something you sent was invalid. Please double check your data and try again.")
-            resp_json = await resp.json()
-            embed = discord.Embed(title=f"Move Lookup for {pokemon.title()} in Generation {generation.upper()}", description="")
-            for move in resp_json:
-                embed.description += f"**{move['name'].title()}** is {'not ' if not move['learnable'] else ''}learnable.\n"
-            await ctx.send(embed=embed)
+        learnables = encounters_module.get_moves(pokemon.capitalize(), generation.upper(), moves)
+        if learnables == 400:
+            return await ctx.send("Something you sent was invalid. Please double check your data and try again.")
+        elif learnables == 500:
+            return await ctx.send("No moves included could be resolved.")
+        embed = discord.Embed(title=f"Move Lookup for {pokemon.title()} in Generation {generation.upper()}", description="")
+        for move in learnables:
+            embed.description += f"**{move['name']}** is {'not ' if not move['learnable'] else ''}learnable.\n"
+        await ctx.send(embed=embed)
 
     @commands.command(name='find')
     async def check_encounters(self, ctx, generation: str, *, input_data):
@@ -439,11 +433,7 @@ class pkhex(commands.Cog):
         input_data = input_data.split("|")
         pokemon = input_data[0]
         moves = input_data[1:]
-
-        # async with self.bot.session.post(self.bot.api_url + "api/Encounter", data=data) as resp:
-        #     if resp.status == 400:
-        #     resp_json = await resp.json()
-        encounters = encounters_module.get_encounters(pokemon.capitalize(), generation.upper(), ("|" + "|".join(moves) if not len(moves) == 0 else ""))
+        encounters = encounters_module.get_encounters(pokemon.capitalize(), generation.upper(), (moves if not len(moves) == 0 else None))
         if encounters == 400:
             return await ctx.send("Something you sent was invalid. Please double check your data and try again.")
         elif encounters == 500:
