@@ -320,28 +320,20 @@ class pkhex(commands.Cog):
         await ctx.send(f"QR containing a {resp['species']} for Generation {resp['generation']}", file=qr)
 
     @commands.command(name='learns', aliases=['learn'])
-    async def check_moves(self, ctx, generation: str, *, input_data):
-        """Checks if a given pokemon can learn moves. Separate moves using pipes. Example: .learns 8 pikachu | quick attack | hail"""
-        try:
-            int(generation)
-        except ValueError:
-            if generation.lower() not in ("bdsp", "pla", "lgpe"):
-                return await ctx.send(f"There is no generation {generation}.")
-        else:
-            if int(generation) not in range(1, 9):
-                return await ctx.send(f"There is no generation {generation}.")
+    async def check_moves(self, ctx, *, input_data):
+        """Checks if a given pokemon can learn provided moves. Separate moves using pipes. Example: .learns pikachu | quick attack | hail"""
         input_data = input_data.replace("| ", "|").replace(" |", "|").replace(" | ", "|")
         input_data = input_data.split("|")
         pokemon = input_data[0]
         moves = input_data[1:]
         if not moves:
             return await ctx.send("No moves provided, or the data provided was in an incorrect format.\n```Example: .learns pikachu | quick attack | hail```")
-        learnables = encounters_module.get_moves(pokemon.capitalize(), generation.upper(), moves)
+        learnables = encounters_module.get_moves(pokemon.capitalize(), moves)
         if learnables == 400:
             return await ctx.send("Something you sent was invalid. Please double check your data and try again.")
         elif learnables == 500:
             return await ctx.send("No moves included could be resolved.")
-        embed = discord.Embed(title=f"Move Lookup for {pokemon.title()} in Generation {generation.upper()}", description="")
+        embed = discord.Embed(title=f"Move Lookup for {pokemon.title()}", description="")
         for move in learnables:
             embed.description += f"**{move['name']}** is {'not ' if not move['learnable'] else ''}learnable.\n"
         await ctx.send(embed=embed)

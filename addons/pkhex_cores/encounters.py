@@ -114,7 +114,7 @@ def get_encounters(pokemon, generation, moves: list = None):
     return genlocs
 
 
-def get_moves(pokemon, generation, moves: list):
+def get_moves(pokemon, moves: list):
     pokemon_id = [int(item) for item in Enum.GetValues(Species) if Enum.GetName(Species, item) == pokemon]
     if len(pokemon_id) == 0:
         return 400
