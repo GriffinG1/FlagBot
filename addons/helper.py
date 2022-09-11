@@ -1,6 +1,7 @@
 import discord
 import json
 import functools
+import re
 from datetime import datetime
 from discord.ext import commands
 
@@ -96,6 +97,13 @@ def faq_decorator(func):
             faq_item = "6"
         await func(self=self, ctx=ctx, faq_doc=faq_doc, faq_item=faq_item)
     return wrapper
+
+
+def get_string_from_regex(regex_pattern, data):
+    match = re.search(regex_pattern, data)
+    if match:
+        return match.group(0)  # Return entire match
+    return ""  # Handle failed matches by returning an empty string
 
 
 game_dict = {

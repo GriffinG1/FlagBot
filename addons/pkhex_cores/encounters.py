@@ -5,7 +5,7 @@ import sys
 import os
 import re
 import clr
-import numpy
+from addons.helper import get_string_from_regex
 
 # Import PKHeX stuff
 sys.path.append(os.getcwd() + r"/addons/pkhex_cores/deps")
@@ -14,13 +14,6 @@ from PKHeX.Core import EncounterLearn  # Import classes
 from PKHeX.Core import Species, Move  # Import Enums
 # Import base C# Objects
 from System import Enum, UInt16
-
-
-def get_string_from_regex(regex_pattern, data):
-    match = re.search(regex_pattern, data)
-    if match:
-        return match.group(0)  # Return entire match
-    return ""  # Handle failed matches by returning an empty string
 
 
 def get_encounters(pokemon, generation: str, moves: list = None):
