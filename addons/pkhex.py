@@ -23,7 +23,7 @@ class pkhex(commands.Cog):
         self.bot = bot
         print(f'Addon "{self.__class__.__name__}" loaded')
 
-    async def process_file(self, ctx, data, attachments, url):
+    async def process_file(self, ctx, data, attachments, func):
         if not data and not attachments:
             await ctx.send("Error: No data was provided and no pkx file was attached.")
             return 400
@@ -48,31 +48,19 @@ class pkhex(commands.Cog):
                 return 400
             try:
                 async with self.bot.session.get(data) as resp:
-                    file = io.BytesIO(await resp.read())
+                    file = io.BytesIO(await resp.read()).getvalue()
             except aiohttp.InvalidURL:
                 await ctx.send("The provided data was not valid.")
                 return 400
-        url = self.bot.api_url + url
-        files = {'pkmn': file}
-        if user_id is None:
-            user_id = ""
-        headers = {'discord-user': str(user_id), 'secret': self.bot.site_secret, 'source': "FlagBot"}
-        async with self.bot.session.post(url=url, data=files, headers=headers) as resp:
-            if resp.status == 400 or resp.status == 413:
-                await ctx.send("The provided file was invalid.")
-                return 400
-            try:
-                resp_json = await resp.json()
-            except aiohttp.client_exceptions.ContentTypeError:
-                resp_json = {}
-            content = await resp.content.read()
-            if content == b'':
-                content = await resp.read()
-            if content == b'':
-                await ctx.send(f"Couldn't get response content. {self.bot.creator.mention} and {self.bot.allen.mention} please investigate!")
-                await ctx.send(content)
-                return 400
-            return [resp.status, resp_json, content]
+        if func == "pokemon_info":
+            pokeinfo = pokeinfo_module.get_pokemon_file_info(file)
+        if pokeinfo == 400:
+            await ctx.send("The provided file was invalid.")
+            return 400
+        elif pokeinfo == 500:
+            await ctx.send("Pokemon does not exist in generation.")
+            return 400
+        return pokeinfo
 
     def embed_fields(self, embed, data, is_set=False):
         embed.add_field(name="Species", value=data["species"])
@@ -109,10 +97,11 @@ class pkhex(commands.Cog):
             embed.add_field(name="Held Item", value=data["held_item"])
         if is_set:
             embed.add_field(name=u"\u200B", value=u"\u200B", inline=False)
-        embed.add_field(name="EVs", value=f"**HP**: {data['hp_ev']}\n**Atk**: {data['atk_ev']}\n**Def**: {data['def_ev']}\n**SpAtk**: {data['spa_ev']}\n**SpDef**: {data['spd_ev']}\n**Spd**: {data['spe_ev']}")
-        embed.add_field(name="IVs", value=f"**HP**: {data['hp_iv']}\n**Atk**: {data['atk_iv']}\n**Def**: {data['def_iv']}\n**SpAtk**: {data['spa_iv']}\n**SpDef**: {data['spd_iv']}\n**Spd**: {data['spe_iv']}")
+        stats = data["stats"]
+        embed.add_field(name="EVs", value=f"**HP**: {stats[0]['ev']}\n**Atk**: {stats[1]['ev']}\n**Def**: {stats[2]['ev']}\n**SpAtk**: {stats[3]['ev']}\n**SpDef**: {stats[4]['ev']}\n**Spd**: {stats[5]['ev']}")
+        embed.add_field(name="IVs", value=f"**HP**: {stats[0]['iv']}\n**Atk**: {stats[1]['iv']}\n**Def**: {stats[2]['iv']}\n**SpAtk**: {stats[3]['iv']}\n**SpDef**: {stats[4]['iv']}\n**Spd**: {stats[5]['iv']}")
         moves = data["moves"]
-        embed.add_field(name="Moves", value=f"**1**: {moves[0]['move_name']}\n**2**: {moves[1]['move_name']}\n**3**: {moves[2]['move_name']}\n**4**: {moves[3]['move_name']}")
+        embed.add_field(name="Moves", value=f"**1**: {moves[0]}\n**2**: {moves[1]}\n**3**: {moves[2]}\n**4**: {moves[3]}")
         return embed
 
     def list_to_embed(self, embed, input_list):
@@ -156,21 +145,12 @@ class pkhex(commands.Cog):
 
     @commands.command(name='pokeinfo', aliases=['pi'])
     @restricted_to_bot
-    async def poke_info(self, ctx, species_form_pair="", generation: str = None, shiny: bool = False):
+    async def poke_info(self, ctx, species_form_pair_or_url: str = "", generation: str = None, shiny: bool = False):
         ("""Returns an embed with a Pokemon's nickname, species, and a few others. Takes a provided URL or attached pkx file. URL *must* be a direct download link.
          Alternatively can take a single Pokemon as an entry, and will return basic information on the species. 'generation' must be passed for this, shiny is bool.""")
+
         # Get info for inputted pokemon
-        try:
-            int(generation)
-        except ValueError:
-            if generation.lower() not in ("bdsp", "pla", "lgpe"):
-                return await ctx.send(f"There is no generation {generation}.")
-        except TypeError:
-            raise commands.MissingRequiredArgument((inspect.Parameter(name='generation', kind=inspect.Parameter.POSITIONAL_ONLY)))
-        else:
-            if int(generation) not in range(1, 9):
-                return await ctx.send(f"There is no generation {generation}.")
-        if not validators.url(species_form_pair) and not ctx.message.attachments:
+        if not validators.url(species_form_pair_or_url) and not ctx.message.attachments:
             colours = {
                 "Red": discord.Colour.red(),
                 "Blue": discord.Colour.blue(),
@@ -183,13 +163,25 @@ class pkhex(commands.Cog):
                 "White": discord.Colour(0xe9edf5),
                 "Pink": discord.Colour(0xFF1493),
             }
-            species_form_pair = species_form_pair.split('-')
-            pokemon = "flabébé" if species_form_pair[0].lower() == "flabebe" else species_form_pair[0].lower()
+            if not generation:
+                raise commands.MissingRequiredArgument((inspect.Parameter(name='generation', kind=inspect.Parameter.POSITIONAL_ONLY)))
+            try:
+                int(generation)
+            except ValueError:
+                if generation.lower() not in ("bdsp", "pla", "lgpe"):
+                    return await ctx.send(f"There is no generation {generation}.")
+            except TypeError:
+                raise commands.MissingRequiredArgument((inspect.Parameter(name='generation', kind=inspect.Parameter.POSITIONAL_ONLY)))
+            else:
+                if int(generation) not in range(1, 9):
+                    return await ctx.send(f"There is no generation {generation}.")
+            species_form_pair_or_url = species_form_pair_or_url.split('-')
+            pokemon = "flabébé" if species_form_pair_or_url[0].lower() == "flabebe" else species_form_pair_or_url[0].lower()
             form = None
             if pokemon in helper.default_forms.keys():
                 form = helper.default_forms[pokemon]
-            if len(species_form_pair) > 1:
-                form = species_form_pair[1].lower()
+            if len(species_form_pair_or_url) > 1:
+                form = species_form_pair_or_url[1].lower()
             elif form == "female":
                 form = "f"
             pokeinfo = pokeinfo_module.get_base_info(pokemon.capitalize(), form.capitalize() if form else form, generation.upper(), shiny)
@@ -225,24 +217,23 @@ class pkhex(commands.Cog):
             embed.add_field(name=f"Base stats ({pokeinfo['bst']})", value=f"```HP:    {pokeinfo['hp']} Atk:   {pokeinfo['atk']}\nDef:   {pokeinfo['def']} SpAtk: {pokeinfo['spa']} \nSpDef: {pokeinfo['spd']} Spd:   {pokeinfo['spe']}```")
             embed.title = f"Basic info for {pokemon.title()}{'-' + form.title() if form else ''} in Generation {generation.upper()}"
             embed.set_thumbnail(url=pokeinfo['species_sprite_url'])
-            print(pokeinfo["species_sprite_url"])
             return await ctx.send(embed=embed)
 
-        # Get info for inputted file -- Unimplemented for dlls
-        # resp = await self.process_file(ctx, species_form_pair, ctx.message.attachments, "api/bot/pokemon_info")
-        # if resp == 400:
-        #     return
-        # pokeinfo = resp[1]
-        # embed = discord.Embed()
-        # embed = self.embed_fields(embed, pokeinfo)
-        # if embed == 400:
-        #     return await ctx.send(f"{ctx.author.mention} Something in that pokemon is *very* wrong. Your request has been canceled. Please do not try that mon again.")
-        # embed.set_author(name=f"Data for {pokeinfo['nickname']} ({pokeinfo['gender']})", icon_url=pokeinfo["species_sprite_url"])
-        # embed.colour = discord.Colour.green() if pokeinfo["illegal_reasons"] == "Legal!" else discord.Colour.red()
-        # try:
-        #     await ctx.send(embed=embed)
-        # except Exception as exception:
-        #     return await ctx.send(f"There was an error showing the data for this pokemon. {self.bot.creator.mention}, {self.bot.pie.mention}, or {self.bot.allen.mention} please check this out!\n{ctx.author.mention} please do not delete the file. Exception below.\n\n```{exception}```")
+        # Get info for inputted file
+        pokeinfo = await self.process_file(ctx, species_form_pair_or_url, ctx.message.attachments, "pokemon_info")
+        if pokeinfo == 400:
+            return
+        embed = discord.Embed()
+        embed = self.embed_fields(embed, pokeinfo)
+        if embed == 400:
+            return await ctx.send(f"{ctx.author.mention} Something in that pokemon is *very* wrong. Your request has been canceled. Please do not try that mon again.")
+        embed.title = f"Data for {pokeinfo['nickname']} ({pokeinfo['gender']})"
+        embed.set_thumbnail(url=pokeinfo["species_sprite_url"])
+        embed.colour = discord.Colour.green() if pokeinfo["is_legal"] else discord.Colour.red()
+        try:
+            await ctx.send(embed=embed)
+        except Exception as exception:
+            return await ctx.send(f"There was an error showing the data for this pokemon. {self.bot.creator.mention}, {self.bot.pie.mention}, or {self.bot.allen.mention} please check this out!\n{ctx.author.mention} please do not delete the file. Exception below.\n\n```{exception}```")
 
     @commands.command(name='qr', enabled=False)
     @restricted_to_bot
@@ -397,7 +388,7 @@ class pkhex(commands.Cog):
         pokemon_file = discord.File(io.BytesIO(pkx), "showdownset" + file_extension)
         qr_file = discord.File(io.BytesIO(qr), "qrcode.png")
         log_msg = await upload_channel.send(f"Showdown set converted by {ctx.author}", files=[pokemon_file, qr_file])
-        embed.description = f"[{'PB7' if generation.lower() == 'lgpe' else 'PB8' if generation.lower() == 'bdsp' else 'PA8' if generation.lower() == 'pla' else 'PX' + generation} Download Link]({log_msg.attachments[0].url})\n[QR Code]({log_msg.attachments[1].url})"
+        embed.description = f"[{'PB7' if generation.lower() == 'lgpe' else 'PB8' if generation.lower() == 'bdsp' else 'PA8' if generation.lower() == 'pla' else 'PK' + generation} Download Link]({log_msg.attachments[0].url})\n[QR Code]({log_msg.attachments[1].url})"
         embed.colour = discord.Colour.green() if resp_json["illegal_reasons"] == "Legal!" else discord.Colour.red()
         await ctx.send(embed=embed)
 
