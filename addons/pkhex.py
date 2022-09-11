@@ -154,20 +154,12 @@ class pkhex(commands.Cog):
             return await ctx.send(f"No forms available for `{pokemon.capitalize()}`.")
         await ctx.send(f"Available forms for {pokemon.capitalize()}: `{'`, `'.join(forms)}`.")
 
-    @commands.command(name='pokeinfo', aliases=['pi'], enabled=False)
+    @commands.command(name='pokeinfo', aliases=['pi'])
     @restricted_to_bot
-    async def poke_info(self, ctx, data="", generation=None, shiny="normal"):
-        ("""Returns an embed with a Pokemon's nickname, species, and a few others. Takes a provided URL or attached pkx file. URL *must* be a direct download link.\n"""
-         """Alternatively can take a single Pokemon as an entry, and will return basic information on the species. 'generation' must be passed for this.""")
-        if not data and not ctx.message.attachments:
-            raise PKHeXMissingArgs()
-        ping = await self.ping_api_func()
-        if not isinstance(ping, aiohttp.ClientResponse) or not ping.status == 200:
-            return await ctx.send("The CoreAPI server is currently down, and as such no commands in the PKHeX module can be used.")
-
+    async def poke_info(self, ctx, species_form_pair="", generation: str = None, shiny: bool = False):
+        ("""Returns an embed with a Pokemon's nickname, species, and a few others. Takes a provided URL or attached pkx file. URL *must* be a direct download link.
+         Alternatively can take a single Pokemon as an entry, and will return basic information on the species. 'generation' must be passed for this, shiny is bool.""")
         # Get info for inputted pokemon
-        if shiny not in ("normal", "shiny"):
-            shiny = "normal"
         try:
             int(generation)
         except ValueError:
@@ -178,7 +170,7 @@ class pkhex(commands.Cog):
         else:
             if int(generation) not in range(1, 9):
                 return await ctx.send(f"There is no generation {generation}.")
-        if not validators.url(data) and not ctx.message.attachments:
+        if not validators.url(species_form_pair) and not ctx.message.attachments:
             colours = {
                 "Red": discord.Colour.red(),
                 "Blue": discord.Colour.blue(),
@@ -191,87 +183,66 @@ class pkhex(commands.Cog):
                 "White": discord.Colour(0xe9edf5),
                 "Pink": discord.Colour(0xFF1493),
             }
-            url = self.bot.api_url + "api/bot/base_info"
-            data = data.split('-')
-            species = data[0].lower()
-            if species == "flabebe":
-                species = "flabébé"
-            elif species in ('jangmo', 'hakamo', 'kommo') and data[1] == "o":
-                species += '-o'
-                data.pop(1)
-            elif species == "ho" and data[1] == "oh":
-                species = "ho-oh"
-                data.pop(1)
-            elif species == "porygon" and data[1].lower() == "z":
-                species = "porygon-z"
-                data.pop(1)
-            form = ""
-            if species in helper.default_forms.keys():
-                form = helper.default_forms[species]
-            if len(data) > 1:
-                form = data[1].lower()
+            species_form_pair = species_form_pair.split('-')
+            pokemon = "flabébé" if species_form_pair[0].lower() == "flabebe" else species_form_pair[0].lower()
+            form = None
+            if pokemon in helper.default_forms.keys():
+                form = helper.default_forms[pokemon]
+            if len(species_form_pair) > 1:
+                form = species_form_pair[1].lower()
             elif form == "female":
                 form = "f"
-            data = {
-                "pkmn": species,
-                "form": form,
-                "shiny": shiny,
-                "generation": generation.upper()
-            }
-            async with self.bot.session.post(url=url, data=data) as resp:
-                if not resp.status == 200:
-                    return await ctx.send("Are you sure that's a real pokemon (or proper form)?")
-                resp_json = await resp.json()
-                embed = discord.Embed(colour=colours[resp_json["color"]])
-                type_str = f"Type 1: {resp_json['types'][0]}"
-                if not resp_json["types"][1] == resp_json["types"][0]:
-                    type_str += f"\nType 2: {resp_json['types'][1]}"
-                embed.add_field(name="Types", value=type_str)
-                ability_str = f"Ability (1): {resp_json['ability1']}"
-                if not resp_json["ability2"] == resp_json["ability1"]:
-                    ability_str += f"\nAbility (2): {resp_json['ability2']}"
-                if resp_json["has_hidden_ability"]:
-                    ability_str += f"\nAbility (H): {resp_json['ability_h']}"
-                embed.add_field(name="Abilities", value=ability_str)
-                embed.add_field(name="Height & Weight", value=f"{resp_json['height'] / 100} meters\n{resp_json['weight'] / 10} kilograms")
-                if resp_json["is_dual_gender"]:
-                    ratio = (resp_json["gender"] / 254) * 100
-                    ratio = round(ratio, 2)
-                    embed.add_field(name="Gender Ratio", value=f"~{ratio}% Female")
-                else:
-                    embed.add_field(name="Gender", value="Genderless" if resp_json["genderless"] else "Male" if resp_json["only_male"] else "Female")
-                embed.add_field(name="EXP Growth", value=resp_json["exp_growth"])
-                embed.add_field(name="Evolution Stage", value=resp_json["evo_stage"])
-                embed.add_field(name="Hatch Cycles", value=resp_json["hatch_cycles"])
-                embed.add_field(name="Base Friendship", value=resp_json["base_friendship"])
-                embed.add_field(name="Catch Rate", value=f"{resp_json['catch_rate']}/255")
-                egg_str = f"Egg Group 1: {resp_json['egg_groups'][0]}"
-                if not resp_json["egg_groups"][1] == resp_json["egg_groups"][0]:
-                    egg_str += f"\nEgg Group 2: {resp_json['egg_groups'][1]}"
-                embed.add_field(name="Egg Groups", value=egg_str)
-                embed.add_field(name=f"Base stats ({resp_json['bst']})", value=f"```HP:    {resp_json['hp']} Atk:   {resp_json['atk']}\nDef:   {resp_json['def']} SpAtk: {resp_json['spa']} \nSpDef: {resp_json['spd']} Spd:   {resp_json['spe']}```")
-                embed.set_author(name=f"Basic info for {species.title()}{'-' + form.title() if form else ''} in Generation {generation.upper()}", icon_url=resp_json['species_sprite_url'])
-                try:
-                    return await ctx.send(embed=embed)
-                except discord.HTTPException:
-                    embed.set_thumbnail(url="")
-                    return await ctx.send(f"{ctx.author.mention} I threw an HTTPException. This is likely due to form stupidity. So don't do that again. Otherwise, you get warned. {self.bot.creator.mention} and {self.bot.pie.mention}, for logging purposes.", embed=embed)
+            pokeinfo = pokeinfo_module.get_base_info(pokemon.capitalize(), form.capitalize() if form else form, generation.upper(), shiny)
+            if pokeinfo == 400:
+                return await ctx.send("Are you sure that's a real pokemon (or proper form)?")
+            embed = discord.Embed(colour=colours[pokeinfo["colour"]])
+            type_str = f"Type 1: {pokeinfo['types'][0]}"
+            if pokeinfo["types"][1] is not None:
+                type_str += f"\nType 2: {pokeinfo['types'][1]}"
+            embed.add_field(name="Types", value=type_str)
+            ability_str = f"Ability (1): {pokeinfo['ability1']}"
+            if not pokeinfo["ability2"] == pokeinfo["ability1"]:
+                ability_str += f"\nAbility (2): {pokeinfo['ability2']}"
+            if pokeinfo["ability_h"] is not None:
+                ability_str += f"\nAbility (H): {pokeinfo['ability_h']}"
+            embed.add_field(name="Abilities", value=ability_str)
+            embed.add_field(name="Height & Weight", value=f"{pokeinfo['height'] / 100} meters\n{pokeinfo['weight'] / 10} kilograms")
+            if pokeinfo["is_dual_gender"]:
+                ratio = (pokeinfo["gender"] / 254) * 100
+                ratio = round(ratio, 2)
+                embed.add_field(name="Gender Ratio", value=f"~{ratio}% Female")
+            else:
+                embed.add_field(name="Gender", value="Genderless" if pokeinfo["is_genderless"] else "Female" if pokeinfo["only_female"] else "Male")
+            embed.add_field(name="EXP Growth", value=pokeinfo["exp_growth"])
+            embed.add_field(name="Evolution Stage", value=pokeinfo["evo_stage"])
+            embed.add_field(name="Hatch Cycles", value=pokeinfo["hatch_cycles"])
+            embed.add_field(name="Base Friendship", value=pokeinfo["base_friendship"])
+            embed.add_field(name="Catch Rate", value=f"{pokeinfo['catch_rate']}/255")
+            egg_str = f"Egg Group 1: {pokeinfo['egg_groups'][0]}"
+            if len(pokeinfo["egg_groups"]) > 1 and pokeinfo["egg_groups"][1] != pokeinfo["egg_groups"][0]:
+                egg_str += f"\nEgg Group 2: {pokeinfo['egg_groups'][1]}"
+            embed.add_field(name="Egg Groups", value=egg_str)
+            embed.add_field(name=f"Base stats ({pokeinfo['bst']})", value=f"```HP:    {pokeinfo['hp']} Atk:   {pokeinfo['atk']}\nDef:   {pokeinfo['def']} SpAtk: {pokeinfo['spa']} \nSpDef: {pokeinfo['spd']} Spd:   {pokeinfo['spe']}```")
+            embed.title = f"Basic info for {pokemon.title()}{'-' + form.title() if form else ''} in Generation {generation.upper()}"
+            embed.set_thumbnail(url=pokeinfo['species_sprite_url'])
+            print(pokeinfo["species_sprite_url"])
+            return await ctx.send(embed=embed)
 
-        # Get info for inputted file
-        resp = await self.process_file(ctx, data, ctx.message.attachments, "api/bot/pokemon_info")
-        if resp == 400:
-            return
-        resp_json = resp[1]
-        embed = discord.Embed()
-        embed = self.embed_fields(embed, resp_json)
-        if embed == 400:
-            return await ctx.send(f"{ctx.author.mention} Something in that pokemon is *very* wrong. Your request has been canceled. Please do not try that mon again.")
-        embed.set_author(name=f"Data for {resp_json['nickname']} ({resp_json['gender']})", icon_url=resp_json["species_sprite_url"])
-        embed.colour = discord.Colour.green() if resp_json["illegal_reasons"] == "Legal!" else discord.Colour.red()
-        try:
-            await ctx.send(embed=embed)
-        except Exception as exception:
-            return await ctx.send(f"There was an error showing the data for this pokemon. {self.bot.creator.mention}, {self.bot.pie.mention}, or {self.bot.allen.mention} please check this out!\n{ctx.author.mention} please do not delete the file. Exception below.\n\n```{exception}```")
+        # Get info for inputted file -- Unimplemented for dlls
+        # resp = await self.process_file(ctx, species_form_pair, ctx.message.attachments, "api/bot/pokemon_info")
+        # if resp == 400:
+        #     return
+        # pokeinfo = resp[1]
+        # embed = discord.Embed()
+        # embed = self.embed_fields(embed, pokeinfo)
+        # if embed == 400:
+        #     return await ctx.send(f"{ctx.author.mention} Something in that pokemon is *very* wrong. Your request has been canceled. Please do not try that mon again.")
+        # embed.set_author(name=f"Data for {pokeinfo['nickname']} ({pokeinfo['gender']})", icon_url=pokeinfo["species_sprite_url"])
+        # embed.colour = discord.Colour.green() if pokeinfo["illegal_reasons"] == "Legal!" else discord.Colour.red()
+        # try:
+        #     await ctx.send(embed=embed)
+        # except Exception as exception:
+        #     return await ctx.send(f"There was an error showing the data for this pokemon. {self.bot.creator.mention}, {self.bot.pie.mention}, or {self.bot.allen.mention} please check this out!\n{ctx.author.mention} please do not delete the file. Exception below.\n\n```{exception}```")
 
     @commands.command(name='qr', enabled=False)
     @restricted_to_bot
