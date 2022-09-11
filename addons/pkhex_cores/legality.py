@@ -45,4 +45,8 @@ def get_legality_report(file):
         return 500
     analysis = LegalityAnalysis(pokemon)
     report = LegalityFormatting.Report(analysis)
+    if report == "Legal!":
+        return 200
+    elif report == "Analysis not available for this Pokémon.":
+        return 201
     return report.replace('\r', '').split('\n')

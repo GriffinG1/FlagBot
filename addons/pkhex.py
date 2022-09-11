@@ -59,7 +59,13 @@ class pkhex(commands.Cog):
             pokeinfo = pokeinfo_module.generate_qr(file)
         elif func == "legality_check":
             pokeinfo = legality_module.get_legality_report(file)
-        if pokeinfo == 400:
+        if pokeinfo == 200:
+            await ctx.send("That Pokemon is legal!")
+            return 400
+        elif pokeinfo == 201:
+            await ctx.send("That pokemon could not be analyzed for some reason.")
+            return 400
+        elif pokeinfo == 400:
             await ctx.send("The provided file was invalid.")
             return 400
         elif pokeinfo == 500:
@@ -128,11 +134,6 @@ class pkhex(commands.Cog):
         legality = await self.process_file(ctx, data, ctx.message.attachments, "legality_check")
         if legality == 400:
             return
-        print(legality)
-        if legality[0] == "Legal!":
-            return await ctx.send("That Pokemon is legal!")
-        elif legality[0] == "Analysis not available for this Pokémon.":
-            return await ctx.send("That pokemon could not be analyzed for some reason.")
         embed = discord.Embed(title="Legality Issues", description="", colour=discord.Colour.red())
         embed = self.list_to_embed(embed, legality)
         await ctx.send(embed=embed)

@@ -3,7 +3,6 @@
 
 import sys
 import os
-import qrcode
 import io
 import clr
 from addons.helper import get_sprite_url
@@ -12,10 +11,10 @@ import addons.pkhex_cores.pkhex_helper as pkhex_helper
 # Import PKHeX stuff
 sys.path.append(os.getcwd() + r"/addons/pkhex_cores/deps")
 clr.AddReference("PKHeX.Core")
-from PKHeX.Core import FormConverter, GameInfo, EntityFormat, EntitySummary, PersonalTable, QRMessageUtil  # Import classes
+from PKHeX.Core import FormConverter, GameInfo, EntityFormat, EntitySummary, PersonalTable  # Import classes
 from PKHeX.Core import Species, Ability  # Import Enums
 # Import base C# Objects
-from System import Enum, UInt16, Byte
+from System import Enum, UInt16, Byte, ReadOnlySpan
 
 
 def form_entry_switcher(csharp_pokemon, csharp_form, generation):
@@ -193,13 +192,7 @@ def generate_qr(file):
         return 501
     if pokemon.Species <= 0 or ((generation == "3" and pokemon.Species > 386) or (generation in ("4", "BDSP") and pokemon.Species > 493) or (generation == "5" and pokemon.Species > 649) or (generation == "6" and pokemon.Species > 721) or (generation == "7" and pokemon.Species > 809)):
         return 500
-    pkmn_qr_message = QRMessageUtil.GetMessage(pokemon)
-    if generation == "7":  # Gen 7 weird
-        return 501  # Temporary measure until we figure out how to handle the bad encoding here
-    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=4)
-    qr.add_data(pkmn_qr_message)
-    qr.make(fit=True)
-    img = qr.make_image()
+    img = pkhex_helper.get_raw_qr_data(pokemon, generation)
     bytes = io.BytesIO()
     img.save(bytes, format='PNG')
     return [bytes.getvalue(), species_name, generation]
