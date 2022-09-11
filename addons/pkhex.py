@@ -11,6 +11,7 @@ from exceptions import PKHeXMissingArgs
 import addons.helper as helper
 import addons.pkhex_cores.encounters as encounters_module
 import addons.pkhex_cores.pokeinfo as pokeinfo_module
+import addons.pkhex_cores.legality as legality_module
 from addons.helper import restricted_to_bot
 from discord.ext import commands
 
@@ -56,6 +57,8 @@ class pkhex(commands.Cog):
             pokeinfo = pokeinfo_module.get_pokemon_file_info(file)
         elif func == "generate_qr":
             pokeinfo = pokeinfo_module.generate_qr(file)
+        elif func == "legality_check":
+            pokeinfo = legality_module.get_legality_report(file)
         if pokeinfo == 400:
             await ctx.send("The provided file was invalid.")
             return 400
@@ -119,23 +122,19 @@ class pkhex(commands.Cog):
             embed.description += values[0] + val + "\n"
         return embed
 
-    @commands.command(name='legality', aliases=['illegal'], enabled=False)
+    @commands.command(name='legality', aliases=['illegal'])
     async def check_legality(self, ctx, *, data=""):
         """Checks the legality of either a provided URL or attached pkx file. URL *must* be a direct download link"""
-        if not data and not ctx.message.attachments:
-            raise PKHeXMissingArgs()
-        ping = await self.ping_api_func()
-        if not isinstance(ping, aiohttp.ClientResponse) or not ping.status == 200:
-            return await ctx.send("The CoreAPI server is currently down, and as such no commands in the PKHeX module can be used.")
-        resp = await self.process_file(ctx, data, ctx.message.attachments, "api/bot/check")
-        if resp == 400:
+        legality = await self.process_file(ctx, data, ctx.message.attachments, "legality_check")
+        if legality == 400:
             return
-        resp_json = resp[1]
-        reasons = resp_json["IllegalReasons"].split("\n")
-        if reasons[0] == "Legal!":
+        print(legality)
+        if legality[0] == "Legal!":
             return await ctx.send("That Pokemon is legal!")
+        elif legality[0] == "Analysis not available for this Pokémon.":
+            return await ctx.send("That pokemon could not be analyzed for some reason.")
         embed = discord.Embed(title="Legality Issues", description="", colour=discord.Colour.red())
-        embed = self.list_to_embed(embed, reasons)
+        embed = self.list_to_embed(embed, legality)
         await ctx.send(embed=embed)
 
     @commands.command(name='forms')

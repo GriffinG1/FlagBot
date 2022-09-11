@@ -3,6 +3,7 @@
 
 import sys
 import clr
+import os
 
 # Import PKHeX stuff
 sys.path.append(os.getcwd() + r"/addons/pkhex_cores/deps")
