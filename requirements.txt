@@ -5,4 +5,4 @@ validators
 psutil
 lxml
 pythonnet>=3.0.0rc4
-numpy
+segno

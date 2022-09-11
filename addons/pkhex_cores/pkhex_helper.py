@@ -4,7 +4,7 @@
 import sys
 import clr
 import os
-import qrcode
+import segno
 
 # Import PKHeX stuff
 sys.path.append(os.getcwd() + r"/addons/pkhex_cores/deps")
@@ -116,12 +116,7 @@ pla_species = [
 ]
 
 
-def get_raw_qr_data(pokemon, generation):
+def get_raw_qr_data(pokemon):
     pkmn_qr_message = QRMessageUtil.GetMessage(pokemon)
-    if generation == "7":  # Gen 7 weird
-        raw_data = ReadOnlySpan[Byte](QR7.GenerateQRData(pokemon))
-        pkmn_qr_message = QRMessageUtil.GetMessage(raw_data)
-    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=4)
-    qr.add_data(pkmn_qr_message)
-    qr.make(fit=True)
-    img = qr.make_image()
+    qr = segno.make_qr(pkmn_qr_message)
+    return qr

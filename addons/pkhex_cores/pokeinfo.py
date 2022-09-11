@@ -192,7 +192,7 @@ def generate_qr(file):
         return 501
     if pokemon.Species <= 0 or ((generation == "3" and pokemon.Species > 386) or (generation in ("4", "BDSP") and pokemon.Species > 493) or (generation == "5" and pokemon.Species > 649) or (generation == "6" and pokemon.Species > 721) or (generation == "7" and pokemon.Species > 809)):
         return 500
-    img = pkhex_helper.get_raw_qr_data(pokemon, generation)
+    img = pkhex_helper.get_raw_qr_data(pokemon)
     bytes = io.BytesIO()
-    img.save(bytes, format='PNG')
+    img.save(bytes, kind='PNG', scale=4)
     return [bytes.getvalue(), species_name, generation]
