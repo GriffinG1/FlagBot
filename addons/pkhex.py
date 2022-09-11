@@ -54,11 +54,16 @@ class pkhex(commands.Cog):
                 return 400
         if func == "pokemon_info":
             pokeinfo = pokeinfo_module.get_pokemon_file_info(file)
+        elif func == "generate_qr":
+            pokeinfo = pokeinfo_module.generate_qr(file)
         if pokeinfo == 400:
             await ctx.send("The provided file was invalid.")
             return 400
         elif pokeinfo == 500:
             await ctx.send("Pokemon does not exist in generation.")
+            return 400
+        elif pokeinfo == 501:
+            await ctx.send("This command does not support that generation.")
             return 400
         return pokeinfo
 
@@ -235,22 +240,15 @@ class pkhex(commands.Cog):
         except Exception as exception:
             return await ctx.send(f"There was an error showing the data for this pokemon. {self.bot.creator.mention}, {self.bot.pie.mention}, or {self.bot.allen.mention} please check this out!\n{ctx.author.mention} please do not delete the file. Exception below.\n\n```{exception}```")
 
-    @commands.command(name='qr', enabled=False)
+    @commands.command(name='qr')
     @restricted_to_bot
     async def gen_pkmn_qr(self, ctx, data=""):
-        """Gens a QR code that PKSM can read. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
-        if not data and not ctx.message.attachments:
-            raise PKHeXMissingArgs()
-        ping = await self.ping_api_func()
-        if not isinstance(ping, aiohttp.ClientResponse) or not ping.status == 200:
-            return await ctx.send("The CoreAPI server is currently down, and as such no commands in the PKHeX module can be used.")
-        resp = await self.process_file(ctx, data, ctx.message.attachments, "api/bot/pokemon_info")
-        if resp == 400:
+        """Gens a QR code that PKSM can read. Takes a provided URL or attached pkx file. URL *must* be a direct download link. Only Generations 3 through 6 are supported"""
+        pokeinfo = await self.process_file(ctx, data, ctx.message.attachments, "generate_qr")
+        if pokeinfo == 400:
             return
-        resp = resp[1]
-        decoded_qr = base64.decodebytes(resp['qr'].encode("ascii"))
-        qr = discord.File(io.BytesIO(decoded_qr), 'pokemon_qr.png')
-        await ctx.send(f"QR containing a {resp['species']} for Generation {resp['generation']}", file=qr)
+        qr = discord.File(io.BytesIO(pokeinfo[0]), 'pokemon_qr.png')
+        await ctx.send(f"QR containing a {pokeinfo[1].title()} for Generation {pokeinfo[2].title()}", file=qr)
 
     @commands.command(name='learns', aliases=['learn'])
     async def check_moves(self, ctx, pokemon, *, moves):

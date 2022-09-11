@@ -3,45 +3,20 @@
 
 import sys
 import os
-import re
+import qrcode
+import io
 import clr
-from addons.helper import get_sprite_url, get_string_from_regex
+import base64
+from addons.helper import get_sprite_url
 
 # Import PKHeX stuff
 sys.path.append(os.getcwd() + r"/addons/pkhex_cores/deps")
 clr.AddReference("PKHeX.Core")
-from PKHeX.Core import FormConverter, GameInfo, EntityContext, EntityFormat, EntitySummary, PersonalTable  # Import classes
-from PKHeX.Core import Species, GameVersion, Ability  # Import Enums
+from PKHeX.Core import FormConverter, GameInfo, EntityContext, EntityFormat, EntitySummary, PersonalTable, QRMessageUtil  # Import classes
+from PKHeX.Core import Species, Ability  # Import Enums
 from PKHeX.Core import PokeList1, PokeList2, PK3, PK4, PK5, PK6, PK7, PB7, PK8, PB8, PA8  # Import PKX classes
 # Import base C# Objects
 from System import Enum, UInt16, Byte
-
-
-def t():
-    mon = "Pikachu"
-    moves = [
-        "Follow Me",
-        "Quick Attack",
-        "Hidden Power"
-    ]
-    form = None
-    shiny = False
-    return get_pokemon_file_info(mon, form, "7", shiny)
-
-
-game_version_dict = {
-    "1": GameVersion.RBY,
-    "2": GameVersion.GSC,
-    "3": GameVersion.RSE,
-    "4": GameVersion.DPPt,
-    "5": GameVersion.B2W2,
-    "6": GameVersion.ORAS,
-    "7": GameVersion.USUM,
-    "LGPE": GameVersion.GG,
-    "8": GameVersion.SWSH,
-    "BDSP": GameVersion.BDSP,
-    "PLA": GameVersion.PLA,
-}
 
 pkx_version_dict = {
     "1": PokeList1,
@@ -290,3 +265,30 @@ def get_pokemon_file_info(file):
         "is_legal": True if entity_summary.Legal == "-" else False
     }
     return pokemon_info
+
+
+def generate_qr(file):
+    pokemon = EntityFormat.GetFromBytes(file)
+    species_name = Enum.GetName(Species, UInt16(pokemon.Species))
+    for key, value in generation_version_dict.items():
+        if pokemon.Version in value:
+            generation = key
+            break
+    if generation in ("1", "2"):
+        pokemon = pkx_version_dict[generation](file)[0]
+    else:
+        pokemon = pkx_version_dict[generation](file)
+    if generation in ("1", "2", "LGPE", "8", "BDSP", "PLA"):
+        return 501
+    if pokemon.Species <= 0 or ((generation == "3" and pokemon.Species > 386) or (generation in ("4", "BDSP") and pokemon.Species > 493) or (generation == "5" and pokemon.Species > 649) or (generation == "6" and pokemon.Species > 721) or (generation == "7" and pokemon.Species > 809)):
+        return 500
+    pkmn_qr_message = QRMessageUtil.GetMessage(pokemon)
+    if generation == "7":  # Gen 7 weird
+        return 501  # Temporary measure until we figure out how to handle the bad encoding here
+    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=4)
+    qr.add_data(pkmn_qr_message)
+    qr.make(fit=True)
+    img = qr.make_image()
+    bytes = io.BytesIO()
+    img.save(bytes, format='PNG')
+    return [bytes.getvalue(), species_name, generation]
