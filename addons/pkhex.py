@@ -54,34 +54,34 @@ class pkhex(commands.Cog):
                 await ctx.send("The provided data was not valid.")
                 return 400
         if func == "pokemon_info":
-            pokeinfo = pokeinfo_module.get_pokemon_file_info(file)
+            return_data = pokeinfo_module.get_pokemon_file_info(file)
         elif func == "generate_qr":
-            pokeinfo = pokeinfo_module.generate_qr(file)
+            return_data = pokeinfo_module.generate_qr(file)
         elif func == "legality_check":
-            pokeinfo = legality_module.get_legality_report(file)
+            return_data = legality_module.get_legality_report(file)
         elif func == "legalize":
-            pokeinfo = legality_module.legalize_pokemon(file)
-        if pokeinfo == 200:
+            return_data = legality_module.legalize_pokemon(file)
+        if return_data == 200:
             await ctx.send("That Pokemon is legal!")
             return 400
-        elif pokeinfo == 201:
+        elif return_data == 201:
             await ctx.send("That pokemon could not be analyzed for some reason.")
             return 400
-        elif pokeinfo == 202:
+        elif return_data == 202:
             await ctx.send("That pokemon could not be legalized.")
             return 400
-        elif pokeinfo == 400:
+        elif return_data == 400:
             await ctx.send("The provided file was invalid.")
             return 400
-        elif pokeinfo == 500:
+        elif return_data == 500:
             await ctx.send("Pokemon does not exist in generation.")
             return 400
-        elif pokeinfo == 501:
+        elif return_data == 501:
             await ctx.send("This command does not support that generation.")
             return 400
-        return pokeinfo
+        return return_data
 
-    def embed_fields(self, embed, data, is_set=False):
+    def embed_fields(self, embed, data):
         embed.add_field(name="Species", value=data["species"])
         embed.add_field(name="Level", value=data["level"])
         embed.add_field(name="Nature", value=data["nature"])
@@ -89,22 +89,17 @@ class pkhex(commands.Cog):
             embed.add_field(name="Ability", value=data["ability"])
         else:
             embed.add_field(name="Ability", value="N/A")
-        if not is_set:
-            ot = data["ot"]
-            sid = data["sid"]
-            tid = data["tid"]
-            if (data["generation"].lower() in ('bdsp', 'pla', 'lgpe')) or int(data["generation"]) > 2:
-                embed.add_field(name="Original Trainer", value=f"{ot}\n({tid}/{sid})")
-            else:
-                embed.add_field(name="Original Trainer", value=f"{ot}\n({tid})")
-        if "ht" in data.keys() and not data["ht"] == "" and not is_set:
+        ot = data["ot"]
+        sid = data["sid"]
+        tid = data["tid"]
+        if (data["generation"].lower() in ('bdsp', 'pla', 'lgpe')) or int(data["generation"]) > 2:
+            embed.add_field(name="Original Trainer", value=f"{ot}\n({tid}/{sid})")
+        else:
+            embed.add_field(name="Original Trainer", value=f"{ot}\n({tid})")
+        if "ht" in data.keys() and not data["ht"] == "":
             embed.add_field(name="Handling Trainer", value=data["ht"])
-        elif not is_set:
-            embed.add_field(name="Handling Trainer", value="N/A")
-        if ((data["generation"].lower() in ('bdsp', 'pla', 'lgpe')) or int(data["generation"]) > 2) and not data["met_loc"] == "" and not is_set:
+        if ((data["generation"].lower() in ('bdsp', 'pla', 'lgpe')) or int(data["generation"]) > 2) and not data["met_loc"] == "":
             embed.add_field(name="Met Location", value=data["met_loc"])
-        elif not is_set:
-            embed.add_field(name="Met Location", value="N/A")
         if (data["generation"].lower() in ('bdsp', 'pla', 'lgpe')) or int(data["generation"]) > 2:
             if data["version"] == "":
                 return 400
@@ -112,10 +107,8 @@ class pkhex(commands.Cog):
         else:
             embed.add_field(name="Origin Game", value="N/A")
         embed.add_field(name="Captured In", value=data["ball"])
-        if data["held_item"] != "(None)" and is_set:
+        if data["held_item"] != "(None)":
             embed.add_field(name="Held Item", value=data["held_item"])
-        if is_set:
-            embed.add_field(name=u"\u200B", value=u"\u200B", inline=False)
         stats = data["stats"]
         embed.add_field(name="EVs", value=f"**HP**: {stats[0]['ev']}\n**Atk**: {stats[1]['ev']}\n**Def**: {stats[2]['ev']}\n**SpAtk**: {stats[3]['ev']}\n**SpDef**: {stats[4]['ev']}\n**Spd**: {stats[5]['ev']}")
         embed.add_field(name="IVs", value=f"**HP**: {stats[0]['iv']}\n**Atk**: {stats[1]['iv']}\n**Def**: {stats[2]['iv']}\n**SpAtk**: {stats[3]['iv']}\n**SpDef**: {stats[4]['iv']}\n**Spd**: {stats[5]['iv']}")
@@ -345,7 +338,7 @@ class pkhex(commands.Cog):
         await msg.delete()
         await ctx.send(embed=embed, file=qr)
 
-    @commands.command(enabled=False)
+    @commands.command()
     @commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
     @restricted_to_bot
     async def convert(self, ctx, generation: str, *, showdown_set):
@@ -360,35 +353,21 @@ class pkhex(commands.Cog):
                 return await ctx.send(f"There is no generation {generation}.")
         showdown_set = showdown_set.replace('`', '')
         upload_channel = await self.bot.fetch_channel(664548059253964847)  # Points to #legalize-log on FlagBrew
-        url = self.bot.api_url + "api/showdown"
-        data = {
-            "set": showdown_set,
-            "generation": generation.upper()
-        }
-        async with self.bot.session.post(url=url, data=data) as resp:
-            if resp.status == 400:
-                message = await resp.json()
-                message = message["message"]
-                if message == "Your Pokemon does not exist!":
-                    return await ctx.send(f"{ctx.author} That pokemon doesn't exist!")
-                else:
-                    return await ctx.send(f"{ctx.author} Conversion failed with error code `{resp.status}` and message:\n`{message}`")
-            elif not resp.status == 200:
-                return await ctx.send(f"{ctx.author} Conversion failed with error code `{resp.status}`.")
-            resp_json = await resp.json()
-            pk64 = resp_json["base64"].encode("ascii")
-            pkx = base64.decodebytes(pk64)
-            qr64 = resp_json["qr"].encode("ascii")
-            qr = base64.decodebytes(qr64)
-        embed = discord.Embed(title=f"Data for {resp_json['nickname']} ({resp_json['gender']})")
-        embed.set_thumbnail(url=resp_json["species_sprite_url"])
-        embed = self.embed_fields(embed, resp_json, is_set=True)
+        converted = legality_module.convert_pokemon(showdown_set, generation)
+        if converted == 400:
+            return await ctx.send("Converting that set failed. Please double check your set.")
+        elif converted == 401:
+            return await ctx.send("That set timed out while generating, as such it is likely illegal.")
+        pokemon_decoded = base64.b64decode(converted["pokemon"])
         file_extension = (".pb7" if generation.lower() == "lgpe" else ".pb8" if generation.lower() == "bdsp" else ".pa8" if generation.lower() == "pla" else ".pk" + generation)
-        pokemon_file = discord.File(io.BytesIO(pkx), "showdownset" + file_extension)
-        qr_file = discord.File(io.BytesIO(qr), "qrcode.png")
-        log_msg = await upload_channel.send(f"Showdown set converted by {ctx.author}", files=[pokemon_file, qr_file])
+        pokemon_file = discord.File(io.BytesIO(pokemon_decoded), "showdownset" + file_extension)
+        qr = discord.File(io.BytesIO(converted["qr"]), 'pokemon_qr.png')
+        embed = discord.Embed(title=f"Data for {converted['nickname']} ({converted['gender']})")
+        embed.set_thumbnail(url=converted["species_sprite_url"])
+        embed = self.embed_fields(embed, converted)
+        log_msg = await upload_channel.send(f"Showdown set converted by {ctx.author}", files=[pokemon_file, qr])
         embed.description = f"[{'PB7' if generation.lower() == 'lgpe' else 'PB8' if generation.lower() == 'bdsp' else 'PA8' if generation.lower() == 'pla' else 'PK' + generation} Download Link]({log_msg.attachments[0].url})\n[QR Code]({log_msg.attachments[1].url})"
-        embed.colour = discord.Colour.green() if resp_json["illegal_reasons"] == "Legal!" else discord.Colour.red()
+        embed.colour = discord.Colour.green() if converted["is_legal"] else discord.Colour.red()
         await ctx.send(embed=embed)
 
 
