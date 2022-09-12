@@ -243,12 +243,23 @@ class pkhex(commands.Cog):
     @commands.command(name='qr')
     @restricted_to_bot
     async def gen_pkmn_qr(self, ctx, data=""):
-        """Gens a QR code that PKSM can read. Takes a provided URL or attached pkx file. URL *must* be a direct download link. Only Generations 3 through 6 are supported"""
-        pokeinfo = await self.process_file(ctx, data, ctx.message.attachments, "generate_qr")
-        if pokeinfo == 400:
-            return
+        """Gens a QR code that PKSM can read. Takes a provided URL or attached pkx file. URL *must* be a direct download link. Only Generations 3 through 6 are supported
+        Can also be used to generate a QR code for a GPSS code. Example: .qr 5782149727 --> QR for https://flagbrew.org/gpss/5782149727"""
+        try:
+            int(data)
+        except ValueError:
+            pokeinfo = await self.process_file(ctx, data, ctx.message.attachments, "generate_qr")
+            if pokeinfo == 400:
+                return
+            send_message = f"QR containing a {pokeinfo[1].title()} for Generation {pokeinfo[2].title()}"
+        else:
+            qr = segno.make_qr(data)
+            bytes = io.BytesIO()
+            qr.save(bytes, kind='PNG', scale=8)
+            pokeinfo = [bytes.getvalue()]
+            send_message = f"QR for GPSS Code {data}"
         qr = discord.File(io.BytesIO(pokeinfo[0]), 'pokemon_qr.png')
-        await ctx.send(f"QR containing a {pokeinfo[1].title()} for Generation {pokeinfo[2].title()}", file=qr)
+        await ctx.send(send_message, file=qr)
 
     @commands.command(name='learns', aliases=['learn'])
     async def check_moves(self, ctx, pokemon, *, moves):
