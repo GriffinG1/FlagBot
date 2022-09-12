@@ -152,6 +152,8 @@ def get_pokemon_file_info(file):
     if entity_summary.Form != 0:
         forms = FormConverter.GetFormList(pokemon.Species, game_info_strings.Types, game_info_strings.forms, GameInfo.GenderSymbolASCII, pkhex_helper.entity_context_dict[generation])
         form_value = forms[form_value]
+    else:
+        form_value = str(form_value)
     sprite_url = get_sprite_url(str(pokemon.Species), generation, form_value.lower(), entity_summary.IsShiny, entity_summary.Gender, entity_summary.Species.lower())
     pokemon_info = {
         "species": entity_summary.Species,
@@ -172,7 +174,7 @@ def get_pokemon_file_info(file):
         "stats": stats,
         "moves": moves,
         "species_sprite_url": sprite_url,
-        "is_legal": True if entity_summary.Legal == "-" else False
+        "is_legal": entity_summary.Legal
     }
     return pokemon_info
 
