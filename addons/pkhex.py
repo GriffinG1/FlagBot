@@ -1,5 +1,4 @@
 import discord
-import asyncio
 import aiohttp
 import io
 import base64
@@ -7,6 +6,7 @@ import validators
 import os
 import urllib
 import inspect
+import segno
 from exceptions import PKHeXMissingArgs
 import addons.helper as helper
 import addons.pkhex_cores.encounters as encounters_module
@@ -59,11 +59,16 @@ class pkhex(commands.Cog):
             pokeinfo = pokeinfo_module.generate_qr(file)
         elif func == "legality_check":
             pokeinfo = legality_module.get_legality_report(file)
+        elif func == "legalize":
+            pokeinfo = legality_module.legalize_pokemon(file)
         if pokeinfo == 200:
             await ctx.send("That Pokemon is legal!")
             return 400
         elif pokeinfo == 201:
             await ctx.send("That pokemon could not be analyzed for some reason.")
+            return 400
+        elif pokeinfo == 202:
+            await ctx.send("That pokemon could not be legalized.")
             return 400
         elif pokeinfo == 400:
             await ctx.send("The provided file was invalid.")
@@ -317,40 +322,25 @@ class pkhex(commands.Cog):
                 embed.add_field(name=f"As {encounter['encounter_type']}", value=field_values, inline=False)
         await ctx.send(embed=embed)
 
-    @commands.command(enabled=False)
+    @commands.command()
     @commands.cooldown(rate=1, per=5.0, type=commands.BucketType.user)
     async def legalize(self, ctx, data=""):
         """Legalizes a pokemon as much as possible. Takes a provided URL or attached pkx file. URL *must* be a direct download link"""
-        if not data and not ctx.message.attachments:
-            raise PKHeXMissingArgs()
         upload_channel = await self.bot.fetch_channel(664548059253964847)  # Points to #legalize-log on FlagBrew
-        ping = await self.ping_api_func()
-        if not isinstance(ping, aiohttp.ClientResponse) or not ping.status == 200:
-            return await ctx.send("The CoreAPI server is currently down, and as such no commands in the PKHeX module can be used.")
         msg = await ctx.send("Attempting to legalize pokemon...")
-        resp = await self.process_file(ctx, data, ctx.message.attachments, "api/v1/bot/auto_legality")
-        if resp == 400:
+        legalized = await self.process_file(ctx, data, ctx.message.attachments, "legalize")
+        if legalized == 400:
             return
-        elif resp[0] == 503:
-            return await msg.edit(content="Legalizing is currently disabled in CoreAPI, and as such this command cannot be used currently.")
-        resp_json = resp[1]
-        if not resp_json["ran"]:
-            return await msg.edit(content="That pokemon is already legal!")
-        elif not resp_json["success"]:
-            return await msg.edit(content="That pokemon couldn't be legalized!")
-        pokemon_b64 = resp_json["pokemon"].encode("ascii")
-        qr_b64 = resp_json["qr"].encode("ascii")
-        pokemon_decoded = base64.decodebytes(pokemon_b64)
-        qr_decoded = base64.decodebytes(qr_b64)
+        pokemon_decoded = base64.b64decode(legalized["pokemon"])
         if data:
             filename = os.path.basename(urllib.parse.urlparse(data).path)
         else:
             filename = ctx.message.attachments[0].filename
         pokemon = discord.File(io.BytesIO(pokemon_decoded), "fixed-" + filename)
-        qr = discord.File(io.BytesIO(qr_decoded), 'pokemon_qr.png')
+        qr = discord.File(io.BytesIO(legalized["qr"]), 'pokemon_qr.png')
         log_msg = await upload_channel.send(f"Pokemon legalized by {ctx.author}", file=pokemon)
-        embed = discord.Embed(title=f"Fixed Legality Issues for {resp_json['species']}", description=f"[Download link]({log_msg.attachments[0].url})\n")
-        embed = self.list_to_embed(embed, resp_json["report"])
+        embed = discord.Embed(title=f"Fixed Legality Issues for {legalized['species']}", description=f"[Download link]({log_msg.attachments[0].url})\n")
+        embed = self.list_to_embed(embed, legalized["report"])
         embed.set_thumbnail(url="attachment://pokemon_qr.png")
         await msg.delete()
         await ctx.send(embed=embed, file=qr)
