@@ -65,10 +65,10 @@ def legalize_pokemon(file):
     trainer_data.Language = pokemon.Language
     trainer_data.Gender = pokemon.OT_Gender
     new_pokemon = Legalizer.Legalize(trainer_data, pokemon)
-    new_legality_report = LegalityFormatting.Report(LegalityAnalysis(pokemon)).replace('\r', '').split('\n')
-    if new_legality_report[0] == "Analysis not available for this Pokémon.":
+    analysis = LegalityAnalysis(pokemon)
+    if not analysis.Valid and not analysis.Parsed:
         return 201
-    elif new_legality_report[0] != "Legal!":
+    elif not analysis.Valid:
         return 202
     legal_data = {}
     legal_data["pokemon"] = Convert.ToBase64String(new_pokemon.DecryptedPartyData)
