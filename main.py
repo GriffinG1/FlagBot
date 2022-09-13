@@ -465,8 +465,14 @@ async def about(ctx):
 
 
 @bot.command(name='uccv', hidden=True)
-async def update_core_commit_vars(ctx, pkhex_core_commit, alm_core_commit):
+async def update_core_commit_vars(ctx, pkhex_core_commit: str, alm_core_commit: str = ""):
     """Changes PKHeX and ALM core commit values in persistent_vars to provided"""
+    if ctx.author not in (bot.creator, bot.allen):
+        raise commands.CheckFailure()
+    if pkhex_core_commit == bot.persistent_vars_dict["pkhex_core_commit"] and alm_core_commit == bot.persistent_vars_dict["alm_core_commit"]:
+        return await ctx.send("No change in commits.")
+    elif alm_core_commit == "":
+        alm_core_commit = bot.persistent_vars_dict["alm_core_commit"]  # pkhex updates more often than alm, allow alm to not need to be updated
     bot.persistent_vars_dict["pkhex_core_commit"] = pkhex_core_commit
     bot.persistent_vars_dict["alm_core_commit"] = alm_core_commit
     with open('saves/persistent_vars.json', 'w') as file:
