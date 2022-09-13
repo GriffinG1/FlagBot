@@ -23,7 +23,7 @@ game_version_dict = {
     "7": GameVersion.USUM,
     "LGPE": GameVersion.GG,
     "8": GameVersion.SWSH,
-    "BDSP": GameVersion.BDSP,
+    "BDSP": GameVersion.BD,  # Can't use BDSP here due to varying amounts of internal validation
     "PLA": GameVersion.PLA,
 }
 
