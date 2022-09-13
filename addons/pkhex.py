@@ -354,10 +354,8 @@ class pkhex(commands.Cog):
         showdown_set = showdown_set.replace('`', '')
         upload_channel = await self.bot.fetch_channel(664548059253964847)  # Points to #legalize-log on FlagBrew
         converted = legality_module.convert_pokemon(showdown_set, generation.upper())
-        if converted == 400:
-            return await ctx.send("Converting that set failed. Please double check your set.")
-        elif converted == 401:
-            return await ctx.send("That set timed out while generating, as such it is likely illegal.")
+        if converted["status"] == 400:
+            await ctx.send(f"Converting that set failed, meaning it is likely illegal. Please review your set.\n```{converted['analysis']}```")
         pokemon_decoded = base64.b64decode(converted["pokemon"])
         file_extension = (".pb7" if generation.lower() == "lgpe" else ".pb8" if generation.lower() == "bdsp" else ".pa8" if generation.lower() == "pla" else ".pk" + generation)
         pokemon_file = discord.File(io.BytesIO(pokemon_decoded), "showdownset" + file_extension)

@@ -15,7 +15,7 @@ clr.AddReference("PKHeX.Core")
 clr.AddReference("PKHeX.Core.AutoMod")
 from PKHeX.Core import EntityFormat, LegalityAnalysis, LegalityFormatting, EncounterEvent, RibbonStrings, GameInfo, SaveUtil, SimpleTrainerInfo, ShowdownSet  # Import classes
 from PKHeX.Core import Species  # Import Enums
-from PKHeX.Core.AutoMod import Legalizer, APILegality
+from PKHeX.Core.AutoMod import Legalizer, APILegality, BattleTemplateLegality, RegenTemplate, LegalizationResult
 # Import base C# Objects
 from System import Enum, UInt16, Convert
 
@@ -83,12 +83,9 @@ def legalize_pokemon(file):
 
 def convert_pokemon(showdown_set, generation):
     showdown = ShowdownSet(showdown_set)
+    regen = RegenTemplate(showdown)
     blank_sav = SaveUtil.GetBlankSAV(pkhex_helper.game_version_dict[generation], "FlagBot")
-    pokemon, result = Legalizer.GetLegalFromSet(blank_sav, showdown)
-    if result == "Failed":
-        return 400
-    elif result == "Timeout":
-        return 401
+    pokemon, result = Legalizer.GetLegalFromSet(blank_sav, regen)
     pokemon_bytes = Convert.ToBase64String(pokemon.DecryptedPartyData)
     pokemon_info = pokeinfo.get_pokemon_file_info(base64.b64decode(pokemon_bytes))
     pokemon_info["pokemon"] = pokemon_bytes
@@ -96,6 +93,14 @@ def convert_pokemon(showdown_set, generation):
     bytes = io.BytesIO()
     img.save(bytes, kind='PNG', scale=4)
     pokemon_info["qr"] = bytes.getvalue()
+    pokemon_info["analysis"] = "No issues!"
+    pokemon_info["status"] = 200
+    if result in (LegalizationResult.Failed, LegalizationResult.Timeout):
+        analysis = "Timed out converting this set"
+        if result == LegalizationResult.Failed:
+            analysis = BattleTemplateLegality.SetAnalysis(regen, blank_sav, blank_sav.BlankPKM)
+        pokemon_info["analysis"] = analysis
+        pokemon_info["status"] = 400
     return pokemon_info
 
 
