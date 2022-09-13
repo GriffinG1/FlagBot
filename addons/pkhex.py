@@ -353,7 +353,7 @@ class pkhex(commands.Cog):
                 return await ctx.send(f"There is no generation {generation}.")
         showdown_set = showdown_set.replace('`', '')
         upload_channel = await self.bot.fetch_channel(664548059253964847)  # Points to #legalize-log on FlagBrew
-        converted = legality_module.convert_pokemon(showdown_set, generation)
+        converted = legality_module.convert_pokemon(showdown_set, generation.upper())
         if converted == 400:
             return await ctx.send("Converting that set failed. Please double check your set.")
         elif converted == 401:
