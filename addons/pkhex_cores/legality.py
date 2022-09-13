@@ -21,8 +21,6 @@ from System import Enum, UInt16, Convert
 
 
 def get_legality_report(file):
-    EncounterEvent.RefreshMGDB("")
-    RibbonStrings.ResetDictionary(GameInfo.Strings.ribbons)
     pokemon = EntityFormat.GetFromBytes(file)
     for key, value in pkhex_helper.generation_version_dict.items():
         if pokemon.Version in value:
@@ -44,11 +42,6 @@ def get_legality_report(file):
 
 
 def legalize_pokemon(file):
-    EncounterEvent.RefreshMGDB("")
-    RibbonStrings.ResetDictionary(GameInfo.Strings.ribbons)
-    Legalizer.EnableEasterEggs = True
-    APILegality.PrioritizeGame = True
-    APILegality.UseTrainerData = False
     pokemon = EntityFormat.GetFromBytes(file)
     for key, value in pkhex_helper.generation_version_dict.items():
         if pokemon.Version in value:
@@ -89,11 +82,6 @@ def legalize_pokemon(file):
 
 
 def convert_pokemon(showdown_set, generation):
-    EncounterEvent.RefreshMGDB("")
-    RibbonStrings.ResetDictionary(GameInfo.Strings.ribbons)
-    Legalizer.EnableEasterEggs = True
-    APILegality.PrioritizeGame = True
-    APILegality.UseTrainerData = False
     showdown = ShowdownSet(showdown_set)
     blank_sav = SaveUtil.GetBlankSAV(pkhex_helper.game_version_dict[generation], "FlagBot")
     pokemon, result = Legalizer.GetLegalFromSet(blank_sav, showdown)
@@ -109,3 +97,10 @@ def convert_pokemon(showdown_set, generation):
     img.save(bytes, kind='PNG', scale=4)
     pokemon_info["qr"] = bytes.getvalue()
     return pokemon_info
+
+
+EncounterEvent.RefreshMGDB("")
+RibbonStrings.ResetDictionary(GameInfo.Strings.ribbons)
+Legalizer.EnableEasterEggs = True
+APILegality.PrioritizeGame = True
+APILegality.UseTrainerData = False
